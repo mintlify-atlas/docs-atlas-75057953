@@ -536,6 +536,22 @@ AxiosError class for creating or identifying axios errors.
 
 CanceledError class for request cancellation.
 
+### axios.Cancel
+
+<Warning>
+  **Deprecated**: `axios.Cancel` is an alias for `CanceledError` and is kept for backward compatibility. Use `CanceledError` instead.
+</Warning>
+
+Deprecated alias for CanceledError class.
+
+```js
+// Deprecated - use CanceledError instead
+import { Cancel } from 'axios';
+
+// Modern approach
+import { CanceledError } from 'axios';
+```
+
 ### axios.CancelToken
 
 CancelToken class for creating cancel tokens (deprecated, use AbortController instead).
