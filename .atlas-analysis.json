@@ -1,0 +1,127 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "Axios",
+  "projectDescription": "Promise-based HTTP client for the browser and Node.js",
+  "theme": "palm",
+  "primaryColor": "#5A67D8",
+  "lightColor": "#7C3AED",
+  "darkColor": "#4338CA",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "core/making-requests",
+              "core/response-schema",
+              "core/config-defaults",
+              "core/instances",
+              "core/interceptors",
+              "core/error-handling"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/cancellation",
+              "advanced/request-config",
+              "advanced/form-data",
+              "advanced/progress-events",
+              "advanced/adapters",
+              "advanced/typescript"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/migration",
+              "guides/best-practices",
+              "guides/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core",
+            "pages": [
+              "api/axios",
+              "api/axios-instance",
+              "api/request-config",
+              "api/response-schema"
+            ]
+          },
+          {
+            "group": "Classes",
+            "pages": [
+              "api/axios-class",
+              "api/axios-error",
+              "api/axios-headers",
+              "api/cancel-token"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "api/http-status-codes",
+              "api/helpers"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Promise-based HTTP requests for browser and Node.js",
+    "Request and response interceptors",
+    "Automatic JSON data transformation",
+    "Request cancellation with AbortController",
+    "Client-side XSRF protection",
+    "FormData and URLSearchParams serialization",
+    "Progress tracking for uploads and downloads",
+    "Multiple adapters (XHR, HTTP, Fetch)"
+  ],
+  "publicApiSurface": [
+    "axios(config)",
+    "axios(url, config)",
+    "axios.request(config)",
+    "axios.get(url, config)",
+    "axios.post(url, data, config)",
+    "axios.put(url, data, config)",
+    "axios.patch(url, data, config)",
+    "axios.delete(url, config)",
+    "axios.head(url, config)",
+    "axios.options(url, config)",
+    "axios.create(config)",
+    "axios.all(promises)",
+    "axios.spread(callback)",
+    "axios.isAxiosError(value)",
+    "axios.isCancel(value)",
+    "axios.toFormData(obj, formData, options)",
+    "axios.formToJSON(form)",
+    "axios.getAdapter(adapters)",
+    "axios.mergeConfig(config1, config2)",
+    "Axios",
+    "AxiosError",
+    "AxiosHeaders",
+    "AxiosRequestConfig",
+    "AxiosResponse",
+    "CancelToken",
+    "CanceledError",
+    "HttpStatusCode",
+    "InternalAxiosRequestConfig",
+    "AxiosInterceptorManager"
+  ]
+}
