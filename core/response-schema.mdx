@@ -1,0 +1,318 @@
+---
+title: Response schema
+description: Understanding the structure of Axios response objects and how to work with them
+---
+
+Every Axios request returns a response object containing detailed information about the server's reply.
+
+## Response structure
+
+The response object contains the following properties:
+
+```javascript
+{
+  // `data` is the response that was provided by the server
+  data: {},
+
+  // `status` is the HTTP status code from the server response
+  status: 200,
+
+  // `statusText` is the HTTP status message from the server response
+  statusText: 'OK',
+
+  // `headers` the HTTP headers that the server responded with
+  // All header names are lowercase and can be accessed using the bracket notation.
+  // Example: `response.headers['content-type']`
+  headers: {},
+
+  // `config` is the config that was provided to `axios` for the request
+  config: {},
+
+  // `request` is the request that generated this response
+  // It is the last ClientRequest instance in node.js (in redirects)
+  // and an XMLHttpRequest instance in the browser
+  request: {}
+}
+```
+
+## Accessing response data
+
+When using `then` or `await`, you receive the complete response object:
+
+<CodeGroup>
+```javascript Using async/await
+const response = await axios.get('/user/12345');
+console.log(response.data);
+console.log(response.status);
+console.log(response.statusText);
+console.log(response.headers);
+console.log(response.config);
+```
+
+```javascript Using promises
+axios.get('/user/12345')
+  .then(function (response) {
+    console.log(response.data);
+    console.log(response.status);
+    console.log(response.statusText);
+    console.log(response.headers);
+    console.log(response.config);
+  });
+```
+</CodeGroup>
+
+## Response properties
+
+### data
+
+The actual response body returned by the server. The type depends on the `responseType` configuration:
+
+<Tabs>
+  <Tab title="JSON (default)">
+    ```javascript
+    const response = await axios.get('/user/12345');
+    console.log(response.data.name); // JavaScript object
+    ```
+  </Tab>
+  
+  <Tab title="Text">
+    ```javascript
+    const response = await axios.get('/data', {
+      responseType: 'text'
+    });
+    console.log(response.data); // String
+    ```
+  </Tab>
+  
+  <Tab title="Stream">
+    ```javascript
+    const response = await axios({
+      method: 'get',
+      url: 'https://example.com/image.jpg',
+      responseType: 'stream'
+    });
+    response.data.pipe(fs.createWriteStream('image.jpg'));
+    ```
+  </Tab>
+  
+  <Tab title="ArrayBuffer">
+    ```javascript
+    const response = await axios.get('/binary-data', {
+      responseType: 'arraybuffer'
+    });
+    console.log(response.data.byteLength);
+    ```
+  </Tab>
+</Tabs>
+
+### status
+
+The HTTP status code (e.g., 200, 404, 500):
+
+```javascript
+const response = await axios.get('/user/12345');
+
+if (response.status === 200) {
+  console.log('Success!');
+} else if (response.status === 404) {
+  console.log('Not found');
+}
+```
+
+### statusText
+
+The HTTP status message:
+
+```javascript
+const response = await axios.get('/user/12345');
+console.log(response.statusText); // 'OK'
+```
+
+### headers
+
+The response headers from the server. All header names are lowercase:
+
+```javascript
+const response = await axios.get('/user/12345');
+
+console.log(response.headers['content-type']);
+console.log(response.headers['content-length']);
+console.log(response.headers['etag']);
+```
+
+<Note>
+Header names are case-insensitive, but Axios normalizes them to lowercase for consistent access.
+</Note>
+
+### config
+
+The configuration object that was used for the request:
+
+```javascript
+const response = await axios.get('/user/12345', {
+  timeout: 5000,
+  headers: { 'X-Custom-Header': 'value' }
+});
+
+console.log(response.config.timeout); // 5000
+console.log(response.config.headers); // Request headers
+console.log(response.config.url); // '/user/12345'
+```
+
+### request
+
+The underlying request object:
+
+- In the browser: `XMLHttpRequest` instance
+- In Node.js: `http.ClientRequest` instance (the last one in case of redirects)
+
+```javascript
+const response = await axios.get('/user/12345');
+console.log(response.request);
+```
+
+## Response types
+
+Configure how Axios interprets the response data using the `responseType` option:
+
+```javascript
+axios.get('/data', {
+  responseType: 'json' // Options: 'arraybuffer', 'document', 'json', 'text', 'stream', 'blob' (browser only)
+});
+```
+
+<Tabs>
+  <Tab title="json">
+    Default. Automatically parses JSON responses:
+    ```javascript
+    const { data } = await axios.get('/api/users');
+    console.log(data.users); // Parsed object
+    ```
+  </Tab>
+  
+  <Tab title="arraybuffer">
+    Useful for binary data:
+    ```javascript
+    const { data } = await axios.get('/image.png', {
+      responseType: 'arraybuffer'
+    });
+    const buffer = Buffer.from(data);
+    ```
+  </Tab>
+  
+  <Tab title="stream">
+    For streaming responses (Node.js):
+    ```javascript
+    const { data } = await axios.get('/large-file', {
+      responseType: 'stream'
+    });
+    data.pipe(fs.createWriteStream('output.txt'));
+    ```
+  </Tab>
+  
+  <Tab title="blob">
+    For Blob objects (browser only):
+    ```javascript
+    const { data } = await axios.get('/image.jpg', {
+      responseType: 'blob'
+    });
+    const url = URL.createObjectURL(data);
+    ```
+  </Tab>
+</Tabs>
+
+## Response encoding
+
+Specify the encoding for decoding responses in Node.js:
+
+```javascript
+const response = await axios.get('/data', {
+  responseEncoding: 'utf8' // default
+});
+```
+
+<Note>
+The `responseEncoding` option is ignored for `responseType: 'stream'` and client-side requests.
+</Note>
+
+## Validating status codes
+
+By default, Axios resolves the promise for any status code in the 2xx range and rejects for others. Customize this behavior:
+
+```javascript
+axios.get('/user/12345', {
+  validateStatus: function (status) {
+    return status < 500; // Resolve only if status code is less than 500
+  }
+});
+```
+
+This allows you to handle certain error codes as successful responses:
+
+<CodeGroup>
+```javascript Accept 404 as success
+axios.get('/user/12345', {
+  validateStatus: (status) => status === 200 || status === 404
+})
+.then((response) => {
+  if (response.status === 404) {
+    console.log('User not found, but that\'s okay');
+  } else {
+    console.log('User found:', response.data);
+  }
+});
+```
+
+```javascript All responses are valid
+axios.get('/endpoint', {
+  validateStatus: () => true
+})
+.then((response) => {
+  // Handle any status code
+  console.log('Status:', response.status);
+});
+```
+</CodeGroup>
+
+## Response transformers
+
+Transform response data before it's passed to `then` or `catch`:
+
+```javascript
+axios.get('/user/12345', {
+  transformResponse: [function (data) {
+    // Transform the raw response data
+    const parsed = JSON.parse(data);
+    
+    // Add a computed property
+    parsed.fullName = `${parsed.firstName} ${parsed.lastName}`;
+    
+    return parsed;
+  }]
+});
+```
+
+<Note>
+Transform functions are called in the order they are defined. The first transformer receives the raw data, and each subsequent transformer receives the output of the previous one.
+</Note>
+
+## TypeScript support
+
+Axios provides full TypeScript support for response types:
+
+```typescript
+import axios, { AxiosResponse } from 'axios';
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+// Type the response data
+const response: AxiosResponse<User> = await axios.get<User>('/user/12345');
+console.log(response.data.name); // TypeScript knows this is a string
+
+// Or destructure with types
+const { data, status, headers } = await axios.get<User>('/user/12345');
+```

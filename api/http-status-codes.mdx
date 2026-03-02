@@ -1,0 +1,167 @@
+---
+title: HttpStatusCode
+description: Enum containing standard HTTP status codes for validation and error handling
+---
+
+The `HttpStatusCode` enum provides a comprehensive set of HTTP status codes that can be used to validate responses or set expectations in your requests.
+
+## Usage
+
+```typescript
+import axios, { HttpStatusCode } from 'axios';
+
+axios.get('/user/12345')
+  .then((response) => {
+    if (response.status === HttpStatusCode.Ok) {
+      console.log('Success!');
+    }
+  })
+  .catch((error) => {
+    if (error.response.status === HttpStatusCode.NotFound) {
+      console.log('User not found');
+    }
+  });
+```
+
+## Informational responses (100-199)
+
+| Status Code | Value | Description |
+|-------------|-------|-------------|
+| `Continue` | 100 | The server has received the request headers |
+| `SwitchingProtocols` | 101 | The requester has asked the server to switch protocols |
+| `Processing` | 102 | The server has received and is processing the request |
+| `EarlyHints` | 103 | Used to return some response headers before final HTTP message |
+
+## Successful responses (200-299)
+
+| Status Code | Value | Description |
+|-------------|-------|-------------|
+| `Ok` | 200 | Standard response for successful HTTP requests |
+| `Created` | 201 | The request has been fulfilled and a new resource created |
+| `Accepted` | 202 | The request has been accepted for processing |
+| `NonAuthoritativeInformation` | 203 | The server successfully processed the request |
+| `NoContent` | 204 | The server successfully processed the request with no content |
+| `ResetContent` | 205 | The server successfully processed the request |
+| `PartialContent` | 206 | The server is delivering only part of the resource |
+| `MultiStatus` | 207 | The message body contains multiple status codes |
+| `AlreadyReported` | 208 | The members of a DAV binding have already been enumerated |
+| `ImUsed` | 226 | The server has fulfilled a request for the resource |
+
+## Redirection messages (300-399)
+
+| Status Code | Value | Description |
+|-------------|-------|-------------|
+| `MultipleChoices` | 300 | Multiple options for the resource |
+| `MovedPermanently` | 301 | This and all future requests should be directed to the given URI |
+| `Found` | 302 | The resource is temporarily under a different URI |
+| `SeeOther` | 303 | The response can be found under a different URI |
+| `NotModified` | 304 | The resource has not been modified since the last request |
+| `UseProxy` | 305 | The requested resource must be accessed through the proxy |
+| `Unused` | 306 | No longer used |
+| `TemporaryRedirect` | 307 | The request should be repeated with another URI |
+| `PermanentRedirect` | 308 | The request should be repeated with another URI permanently |
+
+## Client error responses (400-499)
+
+| Status Code | Value | Description |
+|-------------|-------|-------------|
+| `BadRequest` | 400 | The server cannot process the request due to client error |
+| `Unauthorized` | 401 | Authentication is required and has failed |
+| `PaymentRequired` | 402 | Reserved for future use |
+| `Forbidden` | 403 | The request is valid but the server refuses to respond |
+| `NotFound` | 404 | The requested resource could not be found |
+| `MethodNotAllowed` | 405 | The request method is not supported |
+| `NotAcceptable` | 406 | The requested resource cannot generate acceptable content |
+| `ProxyAuthenticationRequired` | 407 | The client must authenticate with the proxy |
+| `RequestTimeout` | 408 | The server timed out waiting for the request |
+| `Conflict` | 409 | The request could not be processed due to a conflict |
+| `Gone` | 410 | The resource is no longer available |
+| `LengthRequired` | 411 | The request did not specify the length of its content |
+| `PreconditionFailed` | 412 | The server does not meet one of the preconditions |
+| `PayloadTooLarge` | 413 | The request is larger than the server is willing to process |
+| `UriTooLong` | 414 | The URI provided was too long for the server to process |
+| `UnsupportedMediaType` | 415 | The media format of the requested data is not supported |
+| `RangeNotSatisfiable` | 416 | The range specified cannot be fulfilled |
+| `ExpectationFailed` | 417 | The server cannot meet the requirements of the Expect header |
+| `ImATeapot` | 418 | The server refuses to brew coffee because it is a teapot |
+| `MisdirectedRequest` | 421 | The request was directed at a server unable to produce a response |
+| `UnprocessableEntity` | 422 | The request was well-formed but contains semantic errors |
+| `Locked` | 423 | The resource that is being accessed is locked |
+| `FailedDependency` | 424 | The request failed due to failure of a previous request |
+| `TooEarly` | 425 | The server is unwilling to risk processing a request that might be replayed |
+| `UpgradeRequired` | 426 | The client should switch to a different protocol |
+| `PreconditionRequired` | 428 | The origin server requires the request to be conditional |
+| `TooManyRequests` | 429 | The user has sent too many requests |
+| `RequestHeaderFieldsTooLarge` | 431 | The server is unwilling to process the request because header fields are too large |
+| `UnavailableForLegalReasons` | 451 | The user requested a resource that cannot legally be provided |
+
+## Server error responses (500-599)
+
+| Status Code | Value | Description |
+|-------------|-------|-------------|
+| `InternalServerError` | 500 | A generic error message when an unexpected condition was encountered |
+| `NotImplemented` | 501 | The server does not recognize the request method |
+| `BadGateway` | 502 | The server received an invalid response from the upstream server |
+| `ServiceUnavailable` | 503 | The server is currently unavailable |
+| `GatewayTimeout` | 504 | The gateway did not receive a timely response |
+| `HttpVersionNotSupported` | 505 | The server does not support the HTTP protocol version |
+| `VariantAlsoNegotiates` | 506 | Transparent content negotiation for the request results in a circular reference |
+| `InsufficientStorage` | 507 | The server is unable to store the representation |
+| `LoopDetected` | 508 | The server detected an infinite loop while processing the request |
+| `NotExtended` | 510 | Further extensions to the request are required |
+| `NetworkAuthenticationRequired` | 511 | The client needs to authenticate to gain network access |
+
+## Validation example
+
+```typescript
+import axios, { HttpStatusCode } from 'axios';
+
+axios.get('/api/data', {
+  validateStatus: (status) => {
+    return status === HttpStatusCode.Ok || status === HttpStatusCode.Created;
+  }
+});
+```
+
+## Type checking example
+
+```typescript
+import axios, { HttpStatusCode } from 'axios';
+
+try {
+  const response = await axios.post('/api/resource', data);
+  
+  switch (response.status) {
+    case HttpStatusCode.Created:
+      console.log('Resource created successfully');
+      break;
+    case HttpStatusCode.Ok:
+      console.log('Resource updated');
+      break;
+    default:
+      console.log('Unexpected status:', response.status);
+  }
+} catch (error) {
+  if (error.response) {
+    switch (error.response.status) {
+      case HttpStatusCode.BadRequest:
+        console.error('Invalid request data');
+        break;
+      case HttpStatusCode.Unauthorized:
+        console.error('Authentication required');
+        break;
+      case HttpStatusCode.Forbidden:
+        console.error('Access denied');
+        break;
+      case HttpStatusCode.NotFound:
+        console.error('Resource not found');
+        break;
+      case HttpStatusCode.InternalServerError:
+        console.error('Server error');
+        break;
+      default:
+        console.error('Request failed:', error.response.status);
+    }
+  }
+}
+```

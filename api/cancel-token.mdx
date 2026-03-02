@@ -1,0 +1,375 @@
+---
+title: CancelToken and CanceledError
+description: Request cancellation classes for aborting ongoing HTTP requests.
+---
+
+Axios provides two classes for request cancellation: `CancelToken` for managing cancellation, and `CanceledError` for representing canceled requests.
+
+<Note>
+  While CancelToken is still supported, the modern approach is to use the standard `AbortController` API with the `signal` option. See the [Cancellation guide](/usage/cancellation) for more information.
+</Note>
+
+## CancelToken class
+
+The `CancelToken` class provides a way to request cancellation of an operation.
+
+### Constructor
+
+<ParamField path="executor" type="(cancel: Canceler) => void" required>
+  A function that receives a cancel function as its argument.
+</ParamField>
+
+```javascript
+import { CancelToken } from 'axios';
+
+const cancelToken = new CancelToken((cancel) => {
+  // Store cancel function for later use
+  window.cancelRequest = cancel;
+});
+
+axios.get('/api/data', { cancelToken });
+
+// Later, cancel the request
+window.cancelRequest('User canceled the request');
+```
+
+### Properties
+
+#### promise
+
+<ParamField path="promise" type="Promise<Cancel>">
+  A promise that resolves when cancellation is requested.
+</ParamField>
+
+```javascript
+const source = CancelToken.source();
+
+source.token.promise.then((cancel) => {
+  console.log('Request was canceled:', cancel.message);
+});
+
+axios.get('/api/data', { cancelToken: source.token });
+
+source.cancel('Operation canceled by user');
+```
+
+#### reason
+
+<ParamField path="reason" type="Cancel" optional>
+  The cancellation reason, if cancellation has been requested.
+</ParamField>
+
+```javascript
+const source = CancelToken.source();
+
+if (source.token.reason) {
+  console.log('Already canceled:', source.token.reason.message);
+}
+```
+
+### Methods
+
+#### throwIfRequested()
+
+Throws a `CanceledError` if cancellation has been requested.
+
+```javascript
+const source = CancelToken.source();
+
+source.cancel('User canceled');
+
+try {
+  source.token.throwIfRequested();
+  // This won't execute
+  console.log('Not canceled');
+} catch (error) {
+  console.log('Canceled:', error.message);
+}
+```
+
+#### subscribe()
+
+Subscribe to cancellation notifications.
+
+<ParamField path="listener" type="(reason: Cancel) => void" required>
+  Function to call when cancellation is requested.
+</ParamField>
+
+```javascript
+const source = CancelToken.source();
+
+source.token.subscribe((reason) => {
+  console.log('Cancellation requested:', reason.message);
+  // Clean up resources
+});
+
+axios.get('/api/data', { cancelToken: source.token });
+```
+
+#### unsubscribe()
+
+Unsubscribe from cancellation notifications.
+
+<ParamField path="listener" type="(reason: Cancel) => void" required>
+  The listener function to remove.
+</ParamField>
+
+```javascript
+const source = CancelToken.source();
+const listener = (reason) => console.log('Canceled:', reason.message);
+
+source.token.subscribe(listener);
+// Later...
+source.token.unsubscribe(listener);
+```
+
+#### toAbortSignal()
+
+Convert the cancel token to an AbortSignal.
+
+<ParamField path="returns" type="AbortSignal">
+  An AbortSignal that will be aborted when the token is canceled.
+</ParamField>
+
+```javascript
+const source = CancelToken.source();
+const signal = source.token.toAbortSignal();
+
+// Use with fetch API
+fetch('/api/data', { signal });
+
+// Cancel the request
+source.cancel('User canceled');
+```
+
+### Static methods
+
+#### source()
+
+Create a cancel token source with a token and cancel function.
+
+<ParamField path="returns" type="CancelTokenSource">
+  An object with `token` and `cancel` properties.
+</ParamField>
+
+```javascript
+import axios, { CancelToken } from 'axios';
+
+const source = CancelToken.source();
+
+axios.get('/api/users', {
+  cancelToken: source.token
+}).catch((error) => {
+  if (axios.isCancel(error)) {
+    console.log('Request canceled:', error.message);
+  }
+});
+
+// Cancel the request
+source.cancel('User navigated away');
+```
+
+## CanceledError class
+
+The `CanceledError` class extends `AxiosError` and represents a canceled request.
+
+### Constructor
+
+<ParamField path="message" type="string" optional>
+  The cancellation message. Defaults to 'canceled'.
+</ParamField>
+
+<ParamField path="config" type="Object" optional>
+  The request configuration.
+</ParamField>
+
+<ParamField path="request" type="Object" optional>
+  The request object.
+</ParamField>
+
+```javascript
+import { CanceledError } from 'axios';
+
+const error = new CanceledError('User canceled the upload', config, request);
+throw error;
+```
+
+### Properties
+
+#### name
+
+<ParamField path="name" type="'CanceledError'">
+  Always set to `'CanceledError'`.
+</ParamField>
+
+#### All AxiosError properties
+
+CanceledError inherits all properties from [AxiosError](/api/axios-error), including:
+
+- `message` - The error message
+- `code` - Always set to `'ERR_CANCELED'`
+- `config` - The request configuration
+- `request` - The request object
+- `isAxiosError` - Always `true`
+
+## Usage examples
+
+### Basic cancellation
+
+```javascript
+import axios, { CancelToken } from 'axios';
+
+const source = CancelToken.source();
+
+axios.get('/api/search', {
+  params: { q: query },
+  cancelToken: source.token
+}).catch((error) => {
+  if (axios.isCancel(error)) {
+    console.log('Search canceled:', error.message);
+  } else {
+    console.error('Search failed:', error);
+  }
+});
+
+// Cancel when user types new query
+function onQueryChange(newQuery) {
+  source.cancel('New search query entered');
+  // Start new search...
+}
+```
+
+### Canceling multiple requests
+
+```javascript
+import axios, { CancelToken } from 'axios';
+
+const source = CancelToken.source();
+
+// All these requests share the same cancel token
+Promise.all([
+  axios.get('/api/users', { cancelToken: source.token }),
+  axios.get('/api/posts', { cancelToken: source.token }),
+  axios.get('/api/comments', { cancelToken: source.token })
+]).catch((error) => {
+  if (axios.isCancel(error)) {
+    console.log('All requests canceled');
+  }
+});
+
+// Cancel all requests at once
+source.cancel('Component unmounted');
+```
+
+### Request timeout with cancellation
+
+```javascript
+import axios, { CancelToken } from 'axios';
+
+const source = CancelToken.source();
+
+// Set a timeout
+const timeout = setTimeout(() => {
+  source.cancel('Request timeout after 5 seconds');
+}, 5000);
+
+axios.get('/api/slow-endpoint', {
+  cancelToken: source.token
+}).then((response) => {
+  clearTimeout(timeout);
+  console.log(response.data);
+}).catch((error) => {
+  if (axios.isCancel(error)) {
+    console.log('Request timed out:', error.message);
+  }
+});
+```
+
+### Checking cancellation status
+
+```javascript
+import axios, { CancelToken, isCancel } from 'axios';
+
+const source = CancelToken.source();
+
+async function fetchData() {
+  try {
+    const response = await axios.get('/api/data', {
+      cancelToken: source.token
+    });
+    return response.data;
+  } catch (error) {
+    if (isCancel(error)) {
+      console.log('Request canceled');
+      return null;
+    }
+    throw error;
+  }
+}
+
+// Cancel from outside
+source.cancel('User action');
+```
+
+### Using with React hooks
+
+```javascript
+import { useEffect } from 'react';
+import axios, { CancelToken } from 'axios';
+
+function UsersList() {
+  useEffect(() => {
+    const source = CancelToken.source();
+
+    axios.get('/api/users', {
+      cancelToken: source.token
+    }).then((response) => {
+      setUsers(response.data);
+    }).catch((error) => {
+      if (!axios.isCancel(error)) {
+        console.error(error);
+      }
+    });
+
+    // Cleanup function cancels request on unmount
+    return () => {
+      source.cancel('Component unmounted');
+    };
+  }, []);
+
+  return <div>...</div>;
+}
+```
+
+### Migrating to AbortController
+
+The modern approach uses `AbortController`:
+
+```javascript
+import axios from 'axios';
+
+// Old way with CancelToken
+const source = CancelToken.source();
+axios.get('/api/data', { cancelToken: source.token });
+source.cancel('Canceled');
+
+// New way with AbortController
+const controller = new AbortController();
+axios.get('/api/data', { signal: controller.signal });
+controller.abort();
+```
+
+### Converting CancelToken to AbortSignal
+
+```javascript
+import { CancelToken } from 'axios';
+
+const source = CancelToken.source();
+const signal = source.token.toAbortSignal();
+
+// Use signal with fetch or other APIs
+fetch('/api/data', { signal });
+
+// Cancel using the token
+source.cancel('Request canceled');
+```

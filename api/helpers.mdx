@@ -1,0 +1,461 @@
+---
+title: Helper functions
+description: Utility functions for working with Axios requests and responses
+---
+
+Axios provides several helper functions to simplify common tasks like error handling, data transformation, and configuration management.
+
+## isAxiosError
+
+Determines whether a value is an error thrown by Axios.
+
+```typescript
+function isAxiosError<T = any, D = any>(payload: any): payload is AxiosError<T, D>
+```
+
+### Parameters
+
+<ParamField path="payload" type="any" required>
+  The value to test
+</ParamField>
+
+### Returns
+
+Returns `true` if the payload is an AxiosError, otherwise `false`.
+
+### Usage
+
+```typescript
+import axios, { isAxiosError } from 'axios';
+
+try {
+  await axios.get('/api/user');
+} catch (error) {
+  if (isAxiosError(error)) {
+    // TypeScript now knows error is AxiosError
+    console.log('Error status:', error.response?.status);
+    console.log('Error code:', error.code);
+    console.log('Error message:', error.message);
+  } else {
+    console.log('Unexpected error:', error);
+  }
+}
+```
+
+## toFormData
+
+Converts a JavaScript object to FormData.
+
+```typescript
+function toFormData(
+  sourceObj: object,
+  targetFormData?: GenericFormData,
+  options?: FormSerializerOptions
+): GenericFormData
+```
+
+### Parameters
+
+<ParamField path="sourceObj" type="object" required>
+  The object to convert to FormData
+</ParamField>
+
+<ParamField path="targetFormData" type="GenericFormData">
+  Optional existing FormData object to append to
+</ParamField>
+
+<ParamField path="options" type="FormSerializerOptions">
+  Configuration options for the serialization
+
+  - `visitor` - Custom visitor function for handling values
+  - `dots` - Use dot notation for nested objects (default: `false`)
+  - `metaTokens` - Include meta tokens in serialization (default: `true`)
+  - `indexes` - Use array indexes in keys (default: `false`)
+</ParamField>
+
+### Returns
+
+A FormData object containing the serialized data.
+
+### Usage
+
+```typescript
+import axios, { toFormData } from 'axios';
+
+const data = {
+  name: 'John Doe',
+  email: 'john@example.com',
+  age: 30,
+  avatar: fileInput.files[0],
+  preferences: {
+    newsletter: true,
+    notifications: false
+  }
+};
+
+// Convert to FormData
+const formData = toFormData(data);
+
+// Send as multipart/form-data
+axios.post('/api/profile', formData, {
+  headers: {
+    'Content-Type': 'multipart/form-data'
+  }
+});
+```
+
+### With options
+
+```typescript
+import { toFormData } from 'axios';
+
+const data = {
+  user: {
+    name: 'John',
+    email: 'john@example.com'
+  },
+  tags: ['developer', 'nodejs']
+};
+
+// Use dot notation for nested objects
+const formData = toFormData(data, null, { dots: true });
+// Results in: user.name=John, user.email=john@example.com
+
+// Use array indexes
+const formDataWithIndexes = toFormData(data, null, { indexes: true });
+// Results in: tags[0]=developer, tags[1]=nodejs
+```
+
+## formToJSON
+
+Converts a FormData object or HTML form element to a JavaScript object.
+
+```typescript
+function formToJSON(form: GenericFormData | GenericHTMLFormElement): object
+```
+
+### Parameters
+
+<ParamField path="form" type="GenericFormData | GenericHTMLFormElement" required>
+  The FormData object or HTML form element to convert
+</ParamField>
+
+### Returns
+
+A JavaScript object with the form data.
+
+### Usage
+
+```typescript
+import axios, { formToJSON } from 'axios';
+
+// From FormData
+const formData = new FormData();
+formData.append('name', 'John Doe');
+formData.append('email', 'john@example.com');
+
+const json = formToJSON(formData);
+// { name: 'John Doe', email: 'john@example.com' }
+
+axios.post('/api/user', json);
+```
+
+```typescript
+// From HTML form
+const form = document.querySelector('form');
+const data = formToJSON(form);
+
+axios.post('/api/submit', data);
+```
+
+## isCancel
+
+Determines whether a value is a cancellation error.
+
+```typescript
+function isCancel<T = any>(value: any): value is CanceledError<T>
+```
+
+### Parameters
+
+<ParamField path="value" type="any" required>
+  The value to test
+</ParamField>
+
+### Returns
+
+Returns `true` if the value is a cancellation error, otherwise `false`.
+
+### Usage
+
+```typescript
+import axios, { isCancel } from 'axios';
+
+const controller = new AbortController();
+
+try {
+  const response = await axios.get('/api/data', {
+    signal: controller.signal
+  });
+} catch (error) {
+  if (isCancel(error)) {
+    console.log('Request canceled:', error.message);
+  } else {
+    console.log('Request failed:', error);
+  }
+}
+
+// Cancel the request
+controller.abort();
+```
+
+## spread
+
+Syntactic sugar for invoking a function and expanding an array for arguments.
+
+```typescript
+function spread<T, R>(callback: (...args: T[]) => R): (array: T[]) => R
+```
+
+### Parameters
+
+<ParamField path="callback" type="(...args: T[]) => R" required>
+  The function to invoke with spread arguments
+</ParamField>
+
+### Returns
+
+A function that accepts an array and spreads it as arguments to the callback.
+
+### Usage
+
+```typescript
+import axios, { spread } from 'axios';
+
+function processData(users, posts) {
+  console.log('Users:', users.data);
+  console.log('Posts:', posts.data);
+}
+
+axios.all([
+  axios.get('/api/users'),
+  axios.get('/api/posts')
+])
+.then(spread(processData));
+```
+
+```typescript
+// Equivalent to:
+axios.all([
+  axios.get('/api/users'),
+  axios.get('/api/posts')
+])
+.then((results) => {
+  const [users, posts] = results;
+  processData(users, posts);
+});
+```
+
+## all
+
+Helper for making multiple concurrent requests.
+
+```typescript
+function all<T>(values: Array<T | Promise<T>>): Promise<T[]>
+```
+
+### Parameters
+
+<ParamField path="values" type="Array<T | Promise<T>>" required>
+  An array of values or promises to resolve
+</ParamField>
+
+### Returns
+
+A promise that resolves when all requests complete.
+
+### Usage
+
+```typescript
+import axios from 'axios';
+
+axios.all([
+  axios.get('/api/users'),
+  axios.get('/api/posts'),
+  axios.get('/api/comments')
+])
+.then((responses) => {
+  const [users, posts, comments] = responses;
+  console.log('All data loaded');
+})
+.catch((error) => {
+  console.error('One or more requests failed:', error);
+});
+```
+
+<Note>
+  `axios.all` is essentially a wrapper around `Promise.all()`. You can use `Promise.all()` directly for the same functionality.
+</Note>
+
+## mergeConfig
+
+Merges two Axios configuration objects together.
+
+```typescript
+function mergeConfig<D = any>(
+  config1: AxiosRequestConfig<D>,
+  config2: AxiosRequestConfig<D>
+): AxiosRequestConfig<D>
+```
+
+### Parameters
+
+<ParamField path="config1" type="AxiosRequestConfig<D>" required>
+  The first configuration object
+</ParamField>
+
+<ParamField path="config2" type="AxiosRequestConfig<D>" required>
+  The second configuration object (takes priority)
+</ParamField>
+
+### Returns
+
+A new configuration object resulting from merging config2 into config1.
+
+### Usage
+
+```typescript
+import axios, { mergeConfig } from 'axios';
+
+const baseConfig = {
+  baseURL: 'https://api.example.com',
+  timeout: 5000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+};
+
+const requestConfig = {
+  url: '/users',
+  method: 'GET',
+  headers: {
+    'Authorization': 'Bearer token'
+  }
+};
+
+const merged = mergeConfig(baseConfig, requestConfig);
+// {
+//   baseURL: 'https://api.example.com',
+//   timeout: 5000,
+//   url: '/users',
+//   method: 'GET',
+//   headers: {
+//     'Content-Type': 'application/json',
+//     'Authorization': 'Bearer token'
+//   }
+// }
+
+axios(merged);
+```
+
+### Merge behavior
+
+The merge function uses different strategies for different config properties:
+
+- **URL, method, data**: Always use config2 value
+- **baseURL, timeout, headers**: Use config2 value if present, otherwise config1
+- **Headers**: Deep merge headers from both configs
+- **Other properties**: Deep merge objects and arrays
+
+```typescript
+import { mergeConfig } from 'axios';
+
+const defaultConfig = {
+  headers: {
+    common: {
+      'Accept': 'application/json'
+    },
+    post: {
+      'Content-Type': 'application/json'
+    }
+  }
+};
+
+const customConfig = {
+  headers: {
+    common: {
+      'Authorization': 'Bearer token'
+    }
+  }
+};
+
+const result = mergeConfig(defaultConfig, customConfig);
+// Headers are deeply merged:
+// {
+//   headers: {
+//     common: {
+//       'Accept': 'application/json',
+//       'Authorization': 'Bearer token'
+//     },
+//     post: {
+//       'Content-Type': 'application/json'
+//     }
+//   }
+// }
+```
+
+## getAdapter
+
+Resolves the appropriate adapter for making HTTP requests.
+
+```typescript
+function getAdapter(
+  adapters: AxiosAdapterConfig | AxiosAdapterConfig[] | undefined
+): AxiosAdapter
+```
+
+### Parameters
+
+<ParamField path="adapters" type="AxiosAdapterConfig | AxiosAdapterConfig[]">
+  Adapter name(s) or function(s) to use. Can be:
+  - A string: `'xhr'`, `'http'`, or `'fetch'`
+  - An adapter function
+  - An array of adapter names or functions
+</ParamField>
+
+### Returns
+
+The resolved adapter function.
+
+### Usage
+
+```typescript
+import axios, { getAdapter } from 'axios';
+
+// Get the default adapter for the environment
+const adapter = getAdapter(axios.defaults.adapter);
+
+// Specify a specific adapter
+const fetchAdapter = getAdapter('fetch');
+
+axios.get('/api/data', {
+  adapter: fetchAdapter
+});
+```
+
+### With multiple adapters
+
+```typescript
+import { getAdapter } from 'axios';
+
+// Try fetch first, fall back to xhr
+const adapter = getAdapter(['fetch', 'xhr']);
+
+axios.get('/api/data', {
+  adapter
+});
+```
+
+<Note>
+  The adapter system automatically selects the appropriate adapter based on the environment (Node.js or browser). You typically don't need to use `getAdapter` directly unless you want to override the default behavior.
+</Note>

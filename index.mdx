@@ -1,97 +1,77 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: Introduction to Axios
+description: Promise-based HTTP client for the browser and Node.js with powerful features for modern web applications
 ---
 
-## Setting up
+<img src="https://axios-http.com/assets/logo.svg" alt="Axios" style="max-width: 200px; margin: 2rem 0;" />
 
-Get your documentation site up and running in minutes.
+# Promise-based HTTP client for the browser and Node.js
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+Axios is a powerful, promise-based HTTP client that works seamlessly in both browser and Node.js environments. With over 100 million weekly downloads, it's the most popular HTTP client for JavaScript applications.
 
-## Make it yours
+## Why Axios?
 
-Design a docs site that looks great and empowers your users.
+Axios provides a simple, elegant API for making HTTP requests while handling complex scenarios like interceptors, automatic transforms, and request cancellation. It's the perfect tool for consuming REST APIs, uploading files, and managing HTTP communications in your JavaScript applications.
 
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Get started with Axios using npm, yarn, pnpm, bun, or CDN
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Quick start" icon="rocket" href="/quickstart">
+    Make your first GET and POST requests in minutes
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="API Reference" icon="book" href="/api/axios">
+    Explore the complete Axios API documentation
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="GitHub" icon="github" href="https://github.com/axios/axios">
+    View the source code and contribute to the project
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Key features
 
-Everything you need to create world-class documentation.
+<CardGroup cols={2}>
+  <Card title="Universal" icon="globe">
+    Works in both browser and Node.js environments with the same API
+  </Card>
+  <Card title="Promise-based" icon="code">
+    Built on modern JavaScript promises with full async/await support
+  </Card>
+  <Card title="Interceptors" icon="filter">
+    Transform requests and responses with powerful middleware
+  </Card>
+  <Card title="Automatic transforms" icon="wand-magic-sparkles">
+    Automatically serialize and parse JSON data
+  </Card>
+  <Card title="Request cancellation" icon="ban">
+    Cancel requests using AbortController or CancelToken
+  </Card>
+  <Card title="Form data" icon="file-upload">
+    Automatic serialization to multipart/form-data or x-www-form-urlencoded
+  </Card>
+  <Card title="Progress events" icon="chart-line">
+    Track upload and download progress in real-time
+  </Card>
+  <Card title="XSRF protection" icon="shield">
+    Built-in client-side protection against cross-site request forgery
+  </Card>
+</CardGroup>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## Browser support
 
-## Need inspiration?
+Axios supports all modern browsers including Chrome, Firefox, Safari, Opera, and Edge. The library uses XMLHttpRequest in browsers and the native http module in Node.js.
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<Note>
+  Axios requires a Promise polyfill for Internet Explorer and older browsers that don't support ES6 promises natively.
+</Note>
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card title="Install Axios" icon="download" href="/installation">
+    Choose your preferred package manager or CDN option
+  </Card>
+  <Card title="Quick start guide" icon="rocket" href="/quickstart">
+    Learn the basics with working code examples
+  </Card>
+</CardGroup>

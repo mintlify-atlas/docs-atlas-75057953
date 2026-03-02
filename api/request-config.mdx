@@ -1,0 +1,585 @@
+---
+title: AxiosRequestConfig
+description: Configuration options for making HTTP requests with Axios
+---
+
+The `AxiosRequestConfig` interface defines the configuration options available when making requests with Axios. Only the `url` property is required. Requests default to `GET` if `method` is not specified.
+
+## Basic configuration
+
+### url
+
+<ParamField path="url" type="string">
+  Server URL that will be used for the request
+</ParamField>
+
+```js
+{ url: '/user' }
+```
+
+### method
+
+<ParamField path="method" type="string" default="get">
+  Request method to be used when making the request. Valid values: `get`, `GET`, `delete`, `DELETE`, `head`, `HEAD`, `options`, `OPTIONS`, `post`, `POST`, `put`, `PUT`, `patch`, `PATCH`, `purge`, `PURGE`, `link`, `LINK`, `unlink`, `UNLINK`
+</ParamField>
+
+```js
+{ method: 'post' }
+```
+
+### baseURL
+
+<ParamField path="baseURL" type="string">
+  Base URL that will be prepended to `url` unless `url` is absolute and the option `allowAbsoluteUrls` is set to true
+</ParamField>
+
+```js
+{
+  baseURL: 'https://some-domain.com/api/'
+}
+```
+
+### allowAbsoluteUrls
+
+<ParamField path="allowAbsoluteUrls" type="boolean" default="true">
+  Determines whether or not absolute URLs will override a configured `baseURL`. When set to true (default), absolute values for `url` will override `baseURL`. When set to false, absolute values for `url` will always be prepended by `baseURL`
+</ParamField>
+
+## Request data
+
+### data
+
+<ParamField path="data" type="any">
+  Data to be sent as the request body. Only applicable for request methods `PUT`, `POST`, `DELETE`, and `PATCH`. When no `transformRequest` is set, must be one of: string, plain object, ArrayBuffer, ArrayBufferView, URLSearchParams, Browser only: FormData, File, Blob, Node only: Stream, Buffer, FormData
+</ParamField>
+
+```js
+{
+  data: {
+    firstName: 'Fred'
+  }
+}
+```
+
+### params
+
+<ParamField path="params" type="any">
+  URL parameters to be sent with the request. Must be a plain object or a URLSearchParams object
+</ParamField>
+
+```js
+{
+  params: {
+    ID: 12345
+  }
+}
+```
+
+### paramsSerializer
+
+<ParamField path="paramsSerializer" type="ParamsSerializerOptions | CustomParamsSerializer">
+  Optional configuration for serializing URL parameters
+
+  <Expandable title="ParamsSerializerOptions properties">
+    <ParamField path="encode" type="(param: string) => string">
+      Custom encoder function for parameter values
+    </ParamField>
+
+    <ParamField path="serialize" type="(params: Record<string, any>, options?: ParamsSerializerOptions) => string">
+      Custom serializer function for the entire parameter object
+    </ParamField>
+
+    <ParamField path="indexes" type="boolean | null" default="false">
+      Configuration for formatting array indexes in the params. `null` leads to no brackets, `false` (default) leads to empty brackets, `true` leads to brackets with indexes
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+```js
+{
+  paramsSerializer: {
+    indexes: false // Array params: arr[]=1&arr[]=2
+  }
+}
+```
+
+## Headers
+
+### headers
+
+<ParamField path="headers" type="RawAxiosRequestHeaders | AxiosHeaders">
+  Custom headers to be sent with the request
+</ParamField>
+
+```js
+{
+  headers: {'X-Requested-With': 'XMLHttpRequest'}
+}
+```
+
+## Timeouts and cancellation
+
+### timeout
+
+<ParamField path="timeout" type="number" default="0">
+  Number of milliseconds before the request times out. If the request takes longer than `timeout`, the request will be aborted. Default is 0 (no timeout)
+</ParamField>
+
+```js
+{
+  timeout: 1000 // 1 second
+}
+```
+
+### timeoutErrorMessage
+
+<ParamField path="timeoutErrorMessage" type="string">
+  Custom error message for timeout errors
+</ParamField>
+
+### signal
+
+<ParamField path="signal" type="GenericAbortSignal">
+  AbortSignal for cancelling requests using AbortController
+</ParamField>
+
+```js
+const controller = new AbortController();
+
+axios.get('/foo/bar', {
+  signal: controller.signal
+});
+
+// Cancel the request
+controller.abort();
+```
+
+### cancelToken
+
+<ParamField path="cancelToken" type="CancelToken">
+  Cancel token for cancelling requests (deprecated, use AbortController instead)
+</ParamField>
+
+## Response handling
+
+### responseType
+
+<ParamField path="responseType" type="ResponseType" default="json">
+  Indicates the type of data that the server will respond with. Options are: `arraybuffer`, `blob`, `document`, `json`, `text`, `stream`, `formdata`
+</ParamField>
+
+```js
+{
+  responseType: 'json' // default
+}
+```
+
+### responseEncoding
+
+<ParamField path="responseEncoding" type="string" default="utf8">
+  Encoding to use for decoding responses (Node.js only). Ignored for `responseType` of `stream` or client-side requests
+</ParamField>
+
+### validateStatus
+
+<ParamField path="validateStatus" type="((status: number) => boolean) | null">
+  Defines whether to resolve or reject the promise for a given HTTP response status code. If `validateStatus` returns `true` (or is set to `null` or `undefined`), the promise will be resolved; otherwise, the promise will be rejected
+</ParamField>
+
+```js
+{
+  validateStatus: function (status) {
+    return status >= 200 && status < 300; // default
+  }
+}
+```
+
+### maxContentLength
+
+<ParamField path="maxContentLength" type="number">
+  Defines the max size of the HTTP response content in bytes allowed in Node.js
+</ParamField>
+
+### maxBodyLength
+
+<ParamField path="maxBodyLength" type="number">
+  Defines the max size of the HTTP request content in bytes allowed (Node.js only)
+</ParamField>
+
+## Redirects (Node.js only)
+
+### maxRedirects
+
+<ParamField path="maxRedirects" type="number" default="21">
+  Defines the maximum number of redirects to follow in Node.js. If set to 0, no redirects will be followed
+</ParamField>
+
+### beforeRedirect
+
+<ParamField path="beforeRedirect" type="(options: Record<string, any>, responseDetails: { headers: Record<string, string>, statusCode: HttpStatusCode }) => void">
+  Callback that will be called before redirect. Use this to adjust the request options upon redirecting, to inspect the latest response headers, or to cancel the request by throwing an error
+</ParamField>
+
+```js
+{
+  beforeRedirect: (options, { headers }) => {
+    if (options.hostname === "example.com") {
+      options.auth = "user:password";
+    }
+  }
+}
+```
+
+## Request transformation
+
+### transformRequest
+
+<ParamField path="transformRequest" type="AxiosRequestTransformer | AxiosRequestTransformer[]">
+  Allows changes to the request data before it is sent to the server. Only applicable for request methods `PUT`, `POST`, `PATCH` and `DELETE`. The last function in the array must return a string or an instance of Buffer, ArrayBuffer, FormData or Stream
+</ParamField>
+
+```js
+{
+  transformRequest: [function (data, headers) {
+    // Do whatever you want to transform the data
+    return data;
+  }]
+}
+```
+
+### transformResponse
+
+<ParamField path="transformResponse" type="AxiosResponseTransformer | AxiosResponseTransformer[]">
+  Allows changes to the response data to be made before it is passed to then/catch
+</ParamField>
+
+```js
+{
+  transformResponse: [function (data) {
+    // Do whatever you want to transform the data
+    return data;
+  }]
+}
+```
+
+## Authentication
+
+### auth
+
+<ParamField path="auth" type="AxiosBasicCredentials">
+  HTTP Basic authentication credentials. This will set an `Authorization` header, overwriting any existing `Authorization` custom headers. Note: Only HTTP Basic auth is configurable through this parameter. For Bearer tokens, use `Authorization` custom headers instead
+
+  <Expandable title="properties">
+    <ParamField path="username" type="string" required>
+      Username for basic authentication
+    </ParamField>
+
+    <ParamField path="password" type="string" required>
+      Password for basic authentication
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+```js
+{
+  auth: {
+    username: 'janedoe',
+    password: 's00pers3cret'
+  }
+}
+```
+
+### withCredentials
+
+<ParamField path="withCredentials" type="boolean" default="false">
+  Indicates whether or not cross-site Access-Control requests should be made using credentials
+</ParamField>
+
+## XSRF protection
+
+### xsrfCookieName
+
+<ParamField path="xsrfCookieName" type="string" default="XSRF-TOKEN">
+  Name of the cookie to use as a value for the XSRF token
+</ParamField>
+
+### xsrfHeaderName
+
+<ParamField path="xsrfHeaderName" type="string" default="X-XSRF-TOKEN">
+  Name of the HTTP header that carries the XSRF token value
+</ParamField>
+
+### withXSRFToken
+
+<ParamField path="withXSRFToken" type="boolean | ((config: InternalAxiosRequestConfig) => boolean | undefined)">
+  Controls whether Axios reads the XSRF cookie and sets the XSRF header. `undefined` (default): the XSRF header is set only for same-origin requests. `true`: attempt to set the XSRF header for all requests. `false`: never set the XSRF header. Can also be a function that receives the request config and returns a boolean
+</ParamField>
+
+## Progress tracking
+
+### onUploadProgress
+
+<ParamField path="onUploadProgress" type="(progressEvent: AxiosProgressEvent) => void">
+  Callback for handling upload progress events (browser and Node.js)
+</ParamField>
+
+```js
+{
+  onUploadProgress: function ({loaded, total, progress, bytes, estimated, rate, upload = true}) {
+    console.log(`Upload progress: ${(progress * 100).toFixed(2)}%`);
+  }
+}
+```
+
+### onDownloadProgress
+
+<ParamField path="onDownloadProgress" type="(progressEvent: AxiosProgressEvent) => void">
+  Callback for handling download progress events (browser and Node.js)
+</ParamField>
+
+```js
+{
+  onDownloadProgress: function ({loaded, total, progress, bytes, estimated, rate, download = true}) {
+    console.log(`Download progress: ${(progress * 100).toFixed(2)}%`);
+  }
+}
+```
+
+## Adapters
+
+### adapter
+
+<ParamField path="adapter" type="AxiosAdapterConfig | AxiosAdapterConfig[]">
+  Custom handling of requests which makes testing easier. Can be a custom function, the name of a built-in adapter (`xhr`, `http`, `fetch`), or an array of adapter names to choose the first available in the environment
+</ParamField>
+
+```js
+{
+  adapter: 'xhr' // or 'fetch' | 'http' | ['xhr', 'http', 'fetch']
+}
+```
+
+## Proxy (Node.js only)
+
+### proxy
+
+<ParamField path="proxy" type="AxiosProxyConfig | false">
+  Defines the proxy server to use. Set to `false` to disable proxies and ignore environment variables
+
+  <Expandable title="AxiosProxyConfig properties">
+    <ParamField path="host" type="string" required>
+      Hostname of the proxy server
+    </ParamField>
+
+    <ParamField path="port" type="number" required>
+      Port of the proxy server
+    </ParamField>
+
+    <ParamField path="protocol" type="string">
+      Protocol of the proxy server (e.g., `https`)
+    </ParamField>
+
+    <ParamField path="auth" type="AxiosBasicCredentials">
+      HTTP Basic authentication credentials for the proxy
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+```js
+{
+  proxy: {
+    protocol: 'https',
+    host: '127.0.0.1',
+    port: 9000,
+    auth: {
+      username: 'mikeymike',
+      password: 'rapunz3l'
+    }
+  }
+}
+```
+
+## Node.js specific options
+
+### httpAgent
+
+<ParamField path="httpAgent" type="any">
+  Custom agent to be used when performing HTTP requests in Node.js. This allows options like `keepAlive` to be added
+</ParamField>
+
+```js
+import http from 'http';
+
+{
+  httpAgent: new http.Agent({ keepAlive: true })
+}
+```
+
+### httpsAgent
+
+<ParamField path="httpsAgent" type="any">
+  Custom agent to be used when performing HTTPS requests in Node.js
+</ParamField>
+
+```js
+import https from 'https';
+
+{
+  httpsAgent: new https.Agent({ keepAlive: true })
+}
+```
+
+### socketPath
+
+<ParamField path="socketPath" type="string | null" default="null">
+  UNIX Socket to be used in Node.js. Only either `socketPath` or `proxy` can be specified
+</ParamField>
+
+```js
+{
+  socketPath: '/var/run/docker.sock'
+}
+```
+
+### decompress
+
+<ParamField path="decompress" type="boolean" default="true">
+  Indicates whether or not the response body should be decompressed automatically. If set to `true` will also remove the `content-encoding` header from the responses objects of all decompressed responses (Node only, XHR cannot turn off decompression)
+</ParamField>
+
+### insecureHTTPParser
+
+<ParamField path="insecureHTTPParser" type="boolean">
+  Indicates where to use an insecure HTTP parser that accepts invalid HTTP headers. Using the insecure parser should be avoided
+</ParamField>
+
+### transport
+
+<ParamField path="transport" type="any">
+  Transport method that will be used to make the request. If defined, it will be used
+</ParamField>
+
+### maxRate
+
+<ParamField path="maxRate" type="number | [number, number]">
+  Download and upload rate limits in bytes per second (http adapter only, Node.js). Single number for both upload and download, or array with [upload limit, download limit]
+</ParamField>
+
+```js
+{
+  maxRate: [
+    100 * 1024, // 100KB/s upload limit
+    100 * 1024  // 100KB/s download limit
+  ]
+}
+```
+
+## Form data serialization
+
+### formSerializer
+
+<ParamField path="formSerializer" type="FormSerializerOptions">
+  Options for serializing form data
+
+  <Expandable title="properties">
+    <ParamField path="visitor" type="SerializerVisitor">
+      Custom visitor function to serialize form values
+    </ParamField>
+
+    <ParamField path="dots" type="boolean">
+      Use dots instead of brackets format
+    </ParamField>
+
+    <ParamField path="metaTokens" type="boolean">
+      Keep special endings like {} in parameter key
+    </ParamField>
+
+    <ParamField path="indexes" type="boolean | null">
+      Array indexes format: `null` - no brackets, `false` - empty brackets, `true` - brackets with indexes
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### env
+
+<ParamField path="env" type="object">
+  Environment-specific configuration
+
+  <Expandable title="properties">
+    <ParamField path="FormData" type="new (...args: any[]) => object">
+      FormData class to be used to automatically serialize the payload into a FormData object
+    </ParamField>
+
+    <ParamField path="fetch" type="(input: URL | Request | string, init?: RequestInit) => Promise<Response>">
+      Custom fetch function
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Advanced options
+
+### transitional
+
+<ParamField path="transitional" type="TransitionalOptions">
+  Transitional options for backward compatibility
+
+  <Expandable title="properties">
+    <ParamField path="silentJSONParsing" type="boolean" default="true">
+      `true` - ignore JSON parsing errors and set response.data to null if parsing failed. `false` - throw SyntaxError if JSON parsing failed
+    </ParamField>
+
+    <ParamField path="forcedJSONParsing" type="boolean" default="true">
+      Try to parse the response string as JSON even if `responseType` is not `json`
+    </ParamField>
+
+    <ParamField path="clarifyTimeoutError" type="boolean" default="false">
+      Throw ETIMEDOUT error instead of generic ECONNABORTED on request timeouts
+    </ParamField>
+
+    <ParamField path="legacyInterceptorReqResOrdering" type="boolean" default="true">
+      Use the legacy interceptor request/response ordering
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### family
+
+<ParamField path="family" type="4 | 6 | undefined">
+  Address family to use (4 for IPv4, 6 for IPv6, undefined for both)
+</ParamField>
+
+### lookup
+
+<ParamField path="lookup" type="function">
+  Custom DNS lookup function
+</ParamField>
+
+### fetchOptions
+
+<ParamField path="fetchOptions" type="Omit<RequestInit, 'body' | 'headers' | 'method' | 'signal'> | Record<string, any>">
+  Additional options for the fetch adapter
+</ParamField>
+
+### httpVersion
+
+<ParamField path="httpVersion" type="1 | 2">
+  HTTP version to use (1 for HTTP/1.1, 2 for HTTP/2)
+</ParamField>
+
+### http2Options
+
+<ParamField path="http2Options" type="Record<string, any>">
+  Options specific to HTTP/2
+
+  <Expandable title="properties">
+    <ParamField path="sessionTimeout" type="number">
+      HTTP/2 session timeout in milliseconds
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### parseReviver
+
+<ParamField path="parseReviver" type="(this: any, key: string, value: any) => any">
+  Custom JSON parse reviver function
+</ParamField>

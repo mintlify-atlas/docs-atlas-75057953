@@ -1,0 +1,418 @@
+---
+title: Axios class
+description: Core class for creating Axios instances with customizable defaults and interceptors.
+---
+
+The `Axios` class is the core class that powers all Axios instances. It provides methods for making HTTP requests and managing request/response interceptors.
+
+## Constructor
+
+<ParamField path="instanceConfig" type="AxiosRequestConfig" optional>
+  The default configuration for the instance. All requests made with this instance will merge their config with these defaults.
+</ParamField>
+
+```typescript
+import { Axios } from 'axios';
+
+const instance = new Axios({
+  baseURL: 'https://api.example.com',
+  timeout: 5000,
+  headers: { 'X-Custom-Header': 'value' }
+});
+```
+
+## Properties
+
+### defaults
+
+<ParamField path="defaults" type="AxiosDefaults">
+  The default configuration object for this instance. You can modify defaults after instance creation.
+</ParamField>
+
+```javascript
+const instance = new Axios();
+instance.defaults.baseURL = 'https://api.example.com';
+instance.defaults.headers.common['Authorization'] = 'Bearer token';
+```
+
+### interceptors
+
+<ParamField path="interceptors" type="object">
+  Interceptor managers for request and response interception.
+</ParamField>
+
+<ParamField path="interceptors.request" type="AxiosInterceptorManager<InternalAxiosRequestConfig>">
+  Manager for request interceptors.
+</ParamField>
+
+<ParamField path="interceptors.response" type="AxiosInterceptorManager<AxiosResponse>">
+  Manager for response interceptors.
+</ParamField>
+
+```javascript
+// Add a request interceptor
+instance.interceptors.request.use(
+  (config) => {
+    config.headers.Authorization = 'Bearer ' + getToken();
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Add a response interceptor
+instance.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Handle unauthorized
+    }
+    return Promise.reject(error);
+  }
+);
+```
+
+## Methods
+
+### request()
+
+Dispatch a request with the given configuration.
+
+<ParamField path="config" type="AxiosRequestConfig<D>" required>
+  The configuration object for this request. Will be merged with instance defaults.
+</ParamField>
+
+<ParamField path="returns" type="Promise<R>">
+  A promise that resolves to the response object.
+</ParamField>
+
+```typescript
+instance.request<ResponseType>({
+  method: 'post',
+  url: '/user',
+  data: { name: 'John' }
+}).then(response => {
+  console.log(response.data);
+});
+```
+
+### get()
+
+Send a GET request.
+
+<ParamField path="url" type="string" required>
+  The URL to request.
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig<D>" optional>
+  Optional request configuration.
+</ParamField>
+
+<ParamField path="returns" type="Promise<R>">
+  A promise that resolves to the response.
+</ParamField>
+
+```javascript
+instance.get('/users', {
+  params: { page: 1 }
+}).then(response => {
+  console.log(response.data);
+});
+```
+
+### delete()
+
+Send a DELETE request.
+
+<ParamField path="url" type="string" required>
+  The URL to request.
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig<D>" optional>
+  Optional request configuration.
+</ParamField>
+
+<ParamField path="returns" type="Promise<R>">
+  A promise that resolves to the response.
+</ParamField>
+
+```javascript
+instance.delete('/users/123').then(response => {
+  console.log('User deleted');
+});
+```
+
+### head()
+
+Send a HEAD request.
+
+<ParamField path="url" type="string" required>
+  The URL to request.
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig<D>" optional>
+  Optional request configuration.
+</ParamField>
+
+<ParamField path="returns" type="Promise<R>">
+  A promise that resolves to the response.
+</ParamField>
+
+```javascript
+instance.head('/users/123').then(response => {
+  console.log('Headers:', response.headers);
+});
+```
+
+### options()
+
+Send an OPTIONS request.
+
+<ParamField path="url" type="string" required>
+  The URL to request.
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig<D>" optional>
+  Optional request configuration.
+</ParamField>
+
+<ParamField path="returns" type="Promise<R>">
+  A promise that resolves to the response.
+</ParamField>
+
+```javascript
+instance.options('/api').then(response => {
+  console.log('Allowed methods:', response.headers.allow);
+});
+```
+
+### post()
+
+Send a POST request.
+
+<ParamField path="url" type="string" required>
+  The URL to request.
+</ParamField>
+
+<ParamField path="data" type="D" optional>
+  The data to send in the request body.
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig<D>" optional>
+  Optional request configuration.
+</ParamField>
+
+<ParamField path="returns" type="Promise<R>">
+  A promise that resolves to the response.
+</ParamField>
+
+```javascript
+instance.post('/users', {
+  name: 'John Doe',
+  email: 'john@example.com'
+}).then(response => {
+  console.log('Created user:', response.data);
+});
+```
+
+### put()
+
+Send a PUT request.
+
+<ParamField path="url" type="string" required>
+  The URL to request.
+</ParamField>
+
+<ParamField path="data" type="D" optional>
+  The data to send in the request body.
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig<D>" optional>
+  Optional request configuration.
+</ParamField>
+
+<ParamField path="returns" type="Promise<R>">
+  A promise that resolves to the response.
+</ParamField>
+
+```javascript
+instance.put('/users/123', {
+  name: 'Jane Doe'
+}).then(response => {
+  console.log('Updated user:', response.data);
+});
+```
+
+### patch()
+
+Send a PATCH request.
+
+<ParamField path="url" type="string" required>
+  The URL to request.
+</ParamField>
+
+<ParamField path="data" type="D" optional>
+  The data to send in the request body.
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig<D>" optional>
+  Optional request configuration.
+</ParamField>
+
+<ParamField path="returns" type="Promise<R>">
+  A promise that resolves to the response.
+</ParamField>
+
+```javascript
+instance.patch('/users/123', {
+  email: 'newemail@example.com'
+}).then(response => {
+  console.log('Patched user:', response.data);
+});
+```
+
+### postForm()
+
+Send a POST request with `Content-Type: multipart/form-data` header.
+
+<ParamField path="url" type="string" required>
+  The URL to request.
+</ParamField>
+
+<ParamField path="data" type="D" optional>
+  The form data to send. Will be serialized to FormData format.
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig<D>" optional>
+  Optional request configuration.
+</ParamField>
+
+<ParamField path="returns" type="Promise<R>">
+  A promise that resolves to the response.
+</ParamField>
+
+```javascript
+instance.postForm('/upload', {
+  file: fileInput.files[0],
+  description: 'Profile picture'
+}).then(response => {
+  console.log('Upload complete:', response.data);
+});
+```
+
+### putForm()
+
+Send a PUT request with `Content-Type: multipart/form-data` header.
+
+<ParamField path="url" type="string" required>
+  The URL to request.
+</ParamField>
+
+<ParamField path="data" type="D" optional>
+  The form data to send. Will be serialized to FormData format.
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig<D>" optional>
+  Optional request configuration.
+</ParamField>
+
+<ParamField path="returns" type="Promise<R>">
+  A promise that resolves to the response.
+</ParamField>
+
+```javascript
+instance.putForm('/users/123/avatar', {
+  avatar: newAvatarFile
+});
+```
+
+### patchForm()
+
+Send a PATCH request with `Content-Type: multipart/form-data` header.
+
+<ParamField path="url" type="string" required>
+  The URL to request.
+</ParamField>
+
+<ParamField path="data" type="D" optional>
+  The form data to send. Will be serialized to FormData format.
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig<D>" optional>
+  Optional request configuration.
+</ParamField>
+
+<ParamField path="returns" type="Promise<R>">
+  A promise that resolves to the response.
+</ParamField>
+
+```javascript
+instance.patchForm('/profile', {
+  bio: 'Updated bio',
+  avatar: avatarFile
+});
+```
+
+### getUri()
+
+Generate a URL with parameters serialized according to the configuration.
+
+<ParamField path="config" type="AxiosRequestConfig" optional>
+  Configuration object with url, baseURL, and params.
+</ParamField>
+
+<ParamField path="returns" type="string">
+  The computed URI with serialized parameters.
+</ParamField>
+
+```javascript
+const uri = instance.getUri({
+  url: '/users',
+  params: { page: 1, limit: 10 }
+});
+console.log(uri); // '/users?page=1&limit=10'
+```
+
+## Usage example
+
+```javascript
+import { Axios } from 'axios';
+
+// Create a custom instance
+const api = new Axios({
+  baseURL: 'https://api.example.com',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Add request interceptor
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Add response interceptor
+api.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Redirect to login
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Make requests
+api.get('/users').then(users => {
+  console.log(users);
+});
+
+api.post('/users', { name: 'New User' }).then(user => {
+  console.log('Created:', user);
+});
+```

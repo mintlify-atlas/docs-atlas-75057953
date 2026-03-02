@@ -1,0 +1,486 @@
+---
+title: Best practices
+description: Recommended patterns and practices for using Axios in production applications
+---
+
+## Instance management
+
+### Create dedicated instances
+
+Create separate axios instances for different APIs or services instead of using the global axios instance.
+
+```javascript
+// api/github.js
+import axios from 'axios';
+
+export const githubApi = axios.create({
+  baseURL: 'https://api.github.com',
+  timeout: 10000,
+  headers: {
+    Accept: 'application/vnd.github.v3+json'
+  }
+});
+
+// api/backend.js
+import axios from 'axios';
+
+export const backendApi = axios.create({
+  baseURL: process.env.API_URL,
+  timeout: 5000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+```
+
+<Tip>
+  Using dedicated instances makes it easier to configure different timeouts, base URLs, and interceptors for each service.
+</Tip>
+
+### Organize by feature
+
+```javascript
+// services/user.service.js
+import { backendApi } from '../api/backend';
+
+export const userService = {
+  getUser: (id) => backendApi.get(`/users/${id}`),
+  updateUser: (id, data) => backendApi.put(`/users/${id}`, data),
+  deleteUser: (id) => backendApi.delete(`/users/${id}`)
+};
+
+// services/auth.service.js
+import { backendApi } from '../api/backend';
+
+export const authService = {
+  login: (credentials) => backendApi.post('/auth/login', credentials),
+  logout: () => backendApi.post('/auth/logout'),
+  refreshToken: () => backendApi.post('/auth/refresh')
+};
+```
+
+## Error handling
+
+### Centralized error handling
+
+Implement global error handling with interceptors:
+
+```javascript
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: process.env.API_URL
+});
+
+// Response interceptor for error handling
+api.interceptors.response.use(
+  response => response,
+  error => {
+    // Network errors
+    if (!error.response) {
+      console.error('Network error:', error.message);
+      // Show notification: "Network error. Please check your connection."
+      return Promise.reject(error);
+    }
+
+    // HTTP errors
+    switch (error.response.status) {
+      case 401:
+        // Redirect to login
+        window.location.href = '/login';
+        break;
+      case 403:
+        // Show forbidden message
+        console.error('Access denied');
+        break;
+      case 404:
+        // Handle not found
+        console.error('Resource not found');
+        break;
+      case 500:
+        // Show server error message
+        console.error('Server error');
+        break;
+      default:
+        console.error('Request failed:', error.message);
+    }
+
+    return Promise.reject(error);
+  }
+);
+```
+
+### Always handle errors locally
+
+Even with global error handling, always handle errors at the call site:
+
+```javascript
+async function fetchUserData(userId) {
+  try {
+    const response = await api.get(`/users/${userId}`);
+    return { data: response.data, error: null };
+  } catch (error) {
+    // Provide context-specific error handling
+    console.error(`Failed to fetch user ${userId}:`, error);
+    return { data: null, error: error.message };
+  }
+}
+```
+
+### Use isAxiosError for type checking
+
+```javascript
+import axios from 'axios';
+
+try {
+  await api.get('/data');
+} catch (error) {
+  if (axios.isAxiosError(error)) {
+    // TypeScript knows this is an AxiosError
+    console.error('Status:', error.response?.status);
+    console.error('Data:', error.response?.data);
+  } else {
+    // Handle non-Axios errors
+    console.error('Unexpected error:', error);
+  }
+}
+```
+
+## Authentication
+
+### Token management with interceptors
+
+```javascript
+const api = axios.create({
+  baseURL: process.env.API_URL
+});
+
+// Request interceptor to add auth token
+api.interceptors.request.use(
+  config => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  error => Promise.reject(error)
+);
+
+// Response interceptor for token refresh
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+api.interceptors.response.use(
+  response => response,
+  async error => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then(token => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch(err => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const refreshToken = localStorage.getItem('refreshToken');
+        const response = await axios.post('/auth/refresh', { refreshToken });
+        const { token } = response.data;
+        
+        localStorage.setItem('token', token);
+        api.defaults.headers.common.Authorization = `Bearer ${token}`;
+        
+        processQueue(null, token);
+        return api(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+```
+
+## Request optimization
+
+### Use request cancellation
+
+Cancel requests when they're no longer needed:
+
+```javascript
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+
+function SearchComponent() {
+  const [results, setResults] = useState([]);
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchResults = async () => {
+      if (!query) return;
+      
+      try {
+        const response = await axios.get('/api/search', {
+          params: { q: query },
+          signal: controller.signal
+        });
+        setResults(response.data);
+      } catch (error) {
+        if (axios.isCancel(error)) {
+          console.log('Request cancelled');
+        } else {
+          console.error('Search failed:', error);
+        }
+      }
+    };
+
+    fetchResults();
+
+    // Cleanup: cancel request when query changes
+    return () => controller.abort();
+  }, [query]);
+
+  return (
+    <input
+      value={query}
+      onChange={(e) => setQuery(e.target.value)}
+      placeholder="Search..."
+    />
+  );
+}
+```
+
+### Implement request deduplication
+
+Prevent duplicate concurrent requests:
+
+```javascript
+const pendingRequests = new Map();
+
+function createRequestKey(config) {
+  return `${config.method}-${config.url}-${JSON.stringify(config.params)}`;
+}
+
+api.interceptors.request.use(config => {
+  const key = createRequestKey(config);
+  
+  if (pendingRequests.has(key)) {
+    // Return existing promise for this request
+    const controller = new AbortController();
+    config.signal = controller.signal;
+    controller.abort(); // Cancel duplicate
+    return config;
+  }
+  
+  pendingRequests.set(key, true);
+  return config;
+});
+
+api.interceptors.response.use(
+  response => {
+    const key = createRequestKey(response.config);
+    pendingRequests.delete(key);
+    return response;
+  },
+  error => {
+    if (error.config) {
+      const key = createRequestKey(error.config);
+      pendingRequests.delete(key);
+    }
+    return Promise.reject(error);
+  }
+);
+```
+
+### Use timeouts appropriately
+
+```javascript
+// Different timeouts for different operations
+const api = axios.create({
+  baseURL: process.env.API_URL,
+  timeout: 5000 // Default 5 seconds
+});
+
+// Quick operations
+api.get('/health', { timeout: 2000 });
+
+// Long operations
+api.post('/reports/generate', data, { timeout: 30000 });
+
+// No timeout for uploads
+api.post('/files/upload', formData, { timeout: 0 });
+```
+
+## TypeScript integration
+
+### Define response types
+
+```typescript
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+interface ApiResponse<T> {
+  data: T;
+  message: string;
+  status: number;
+}
+
+// Typed API calls
+const getUser = async (id: number): Promise<User> => {
+  const response = await api.get<ApiResponse<User>>(`/users/${id}`);
+  return response.data.data;
+};
+
+const getUsers = async (): Promise<User[]> => {
+  const response = await api.get<ApiResponse<User[]>>('/users');
+  return response.data.data;
+};
+```
+
+### Create typed API client
+
+```typescript
+class ApiClient {
+  private client: AxiosInstance;
+
+  constructor(baseURL: string) {
+    this.client = axios.create({ baseURL });
+    this.setupInterceptors();
+  }
+
+  private setupInterceptors(): void {
+    this.client.interceptors.request.use(
+      config => {
+        const token = localStorage.getItem('token');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      }
+    );
+  }
+
+  async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.client.get<T>(url, config);
+    return response.data;
+  }
+
+  async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.client.post<T>(url, data, config);
+    return response.data;
+  }
+}
+
+const api = new ApiClient(process.env.API_URL!);
+```
+
+## Testing
+
+### Mock axios in tests
+
+```javascript
+import axios from 'axios';
+import { userService } from './user.service';
+
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+
+describe('userService', () => {
+  it('should fetch user data', async () => {
+    const mockUser = { id: 1, name: 'John' };
+    mockedAxios.get.mockResolvedValue({ data: mockUser });
+
+    const user = await userService.getUser(1);
+    
+    expect(user).toEqual(mockUser);
+    expect(mockedAxios.get).toHaveBeenCalledWith('/users/1');
+  });
+
+  it('should handle errors', async () => {
+    mockedAxios.get.mockRejectedValue(new Error('Network error'));
+
+    await expect(userService.getUser(1)).rejects.toThrow('Network error');
+  });
+});
+```
+
+## Configuration management
+
+### Environment-based configuration
+
+```javascript
+// config/api.config.js
+const configs = {
+  development: {
+    baseURL: 'http://localhost:3000/api',
+    timeout: 10000,
+    headers: { 'X-Environment': 'dev' }
+  },
+  staging: {
+    baseURL: 'https://staging-api.example.com',
+    timeout: 8000,
+    headers: { 'X-Environment': 'staging' }
+  },
+  production: {
+    baseURL: 'https://api.example.com',
+    timeout: 5000,
+    headers: { 'X-Environment': 'prod' }
+  }
+};
+
+const env = process.env.NODE_ENV || 'development';
+export const apiConfig = configs[env];
+
+// Usage
+import axios from 'axios';
+import { apiConfig } from './config/api.config';
+
+const api = axios.create(apiConfig);
+```
+
+<CardGroup cols={2}>
+  <Card title="Error handling" icon="triangle-exclamation" href="/core/error-handling">
+    Comprehensive error handling guide
+  </Card>
+  <Card title="Interceptors" icon="filter" href="/core/interceptors">
+    Learn about request and response interceptors
+  </Card>
+  <Card title="TypeScript" icon="code" href="/advanced/typescript">
+    TypeScript integration guide
+  </Card>
+  <Card title="Cancellation" icon="xmark" href="/advanced/cancellation">
+    Request cancellation patterns
+  </Card>
+</CardGroup>

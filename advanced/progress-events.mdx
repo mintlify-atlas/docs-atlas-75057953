@@ -1,0 +1,425 @@
+---
+title: Progress tracking
+description: Track upload and download progress with real-time events, progress percentages, transfer rates, and estimated completion times
+---
+
+Axios provides comprehensive progress tracking for both uploads and downloads in both browser and Node.js environments. Progress events are automatically throttled to fire a maximum of 3 times per second for optimal performance.
+
+## Upload progress
+
+Track the progress of data being sent to the server using the `onUploadProgress` callback:
+
+```javascript
+axios.post('/upload', formData, {
+  onUploadProgress: function(progressEvent) {
+    const percentCompleted = Math.round(
+      (progressEvent.loaded * 100) / progressEvent.total
+    );
+    console.log(`Upload: ${percentCompleted}%`);
+  }
+});
+```
+
+## Download progress
+
+Track the progress of data being received from the server using the `onDownloadProgress` callback:
+
+```javascript
+axios.get('/large-file.zip', {
+  onDownloadProgress: function(progressEvent) {
+    const percentCompleted = Math.round(
+      (progressEvent.loaded * 100) / progressEvent.total
+    );
+    console.log(`Download: ${percentCompleted}%`);
+  }
+});
+```
+
+## Progress event properties
+
+The progress event object contains detailed information about the transfer:
+
+<ParamField path="loaded" type="number">
+  The number of bytes that have been transferred.
+</ParamField>
+
+<ParamField path="total" type="number | undefined">
+  The total number of bytes to be transferred. May be `undefined` if the total size is unknown.
+</ParamField>
+
+<ParamField path="progress" type="number | undefined">
+  A decimal value between 0 and 1 representing the completion percentage.
+  
+  ```javascript
+  console.log(`${(progressEvent.progress * 100).toFixed(2)}%`);
+  ```
+</ParamField>
+
+<ParamField path="bytes" type="number">
+  The number of bytes transferred since the last progress event (delta).
+</ParamField>
+
+<ParamField path="rate" type="number | undefined">
+  The transfer speed in bytes per second.
+  
+  ```javascript
+  const mbps = (progressEvent.rate / 1024 / 1024).toFixed(2);
+  console.log(`Speed: ${mbps} MB/s`);
+  ```
+</ParamField>
+
+<ParamField path="estimated" type="number | undefined">
+  Estimated time remaining in seconds until completion.
+  
+  ```javascript
+  const minutes = Math.floor(progressEvent.estimated / 60);
+  const seconds = Math.floor(progressEvent.estimated % 60);
+  console.log(`Time remaining: ${minutes}m ${seconds}s`);
+  ```
+</ParamField>
+
+<ParamField path="upload" type="boolean | undefined">
+  `true` for upload progress events.
+</ParamField>
+
+<ParamField path="download" type="boolean | undefined">
+  `true` for download progress events.
+</ParamField>
+
+<ParamField path="event" type="ProgressEvent | undefined">
+  The underlying browser ProgressEvent (browser only).
+</ParamField>
+
+<ParamField path="lengthComputable" type="boolean">
+  Indicates whether the total size is known.
+</ParamField>
+
+## Real-world examples
+
+<Tabs>
+  <Tab title="File upload with progress bar">
+    ```javascript
+    function uploadFileWithProgress(file) {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      return axios.post('/api/upload', formData, {
+        onUploadProgress: (progressEvent) => {
+          const { loaded, total, progress, rate, estimated } = progressEvent;
+          
+          // Update progress bar
+          const percentCompleted = Math.round(progress * 100);
+          updateProgressBar(percentCompleted);
+          
+          // Show transfer stats
+          const speedMBps = (rate / 1024 / 1024).toFixed(2);
+          const remainingTime = Math.ceil(estimated);
+          
+          updateStatus({
+            percent: percentCompleted,
+            loaded: formatBytes(loaded),
+            total: formatBytes(total),
+            speed: `${speedMBps} MB/s`,
+            eta: `${remainingTime}s remaining`
+          });
+        }
+      });
+    }
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Download with progress">
+    ```javascript
+    async function downloadFile(url, filename) {
+      try {
+        const response = await axios.get(url, {
+          responseType: 'blob',
+          onDownloadProgress: (progressEvent) => {
+            if (progressEvent.lengthComputable) {
+              const percentCompleted = Math.round(
+                (progressEvent.loaded * 100) / progressEvent.total
+              );
+              console.log(`Downloading: ${percentCompleted}%`);
+              updateDownloadProgress(percentCompleted);
+            } else {
+              // Total size unknown, just show loaded
+              console.log(`Downloaded: ${formatBytes(progressEvent.loaded)}`);
+            }
+          }
+        });
+
+        // Save the file
+        const blob = new Blob([response.data]);
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+        
+        return response;
+      } catch (error) {
+        console.error('Download failed:', error);
+        throw error;
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="React component">
+    ```javascript
+    import { useState } from 'react';
+    import axios from 'axios';
+
+    function FileUploader() {
+      const [uploadProgress, setUploadProgress] = useState(0);
+      const [uploadStats, setUploadStats] = useState(null);
+      const [isUploading, setIsUploading] = useState(false);
+
+      const handleFileUpload = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+          await axios.post('/api/upload', formData, {
+            onUploadProgress: (progressEvent) => {
+              const percent = Math.round(
+                (progressEvent.loaded * 100) / progressEvent.total
+              );
+              setUploadProgress(percent);
+              
+              setUploadStats({
+                loaded: (progressEvent.loaded / 1024 / 1024).toFixed(2),
+                total: (progressEvent.total / 1024 / 1024).toFixed(2),
+                speed: ((progressEvent.rate || 0) / 1024 / 1024).toFixed(2),
+                eta: Math.ceil(progressEvent.estimated || 0)
+              });
+            }
+          });
+          
+          alert('Upload complete!');
+        } catch (error) {
+          alert('Upload failed: ' + error.message);
+        } finally {
+          setIsUploading(false);
+        }
+      };
+
+      return (
+        <div>
+          <input 
+            type="file" 
+            onChange={handleFileUpload} 
+            disabled={isUploading}
+          />
+          
+          {isUploading && (
+            <div>
+              <progress value={uploadProgress} max="100" />
+              <span>{uploadProgress}%</span>
+              
+              {uploadStats && (
+                <div>
+                  <p>{uploadStats.loaded} MB / {uploadStats.total} MB</p>
+                  <p>Speed: {uploadStats.speed} MB/s</p>
+                  <p>ETA: {uploadStats.eta}s</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Node.js stream progress
+
+In Node.js, you can track stream upload/download progress:
+
+```javascript
+const fs = require('fs');
+const readableStream = fs.createReadStream('./large-file.dat');
+const contentLength = fs.statSync('./large-file.dat').size;
+
+const { data } = await axios.post('https://example.com/upload', readableStream, {
+  headers: {
+    'Content-Length': contentLength
+  },
+  onUploadProgress: ({ progress, rate }) => {
+    const percentCompleted = (progress * 100).toFixed(2);
+    const speedMBps = ((rate || 0) / 1024 / 1024).toFixed(2);
+    console.log(`Upload: ${percentCompleted}% at ${speedMBps} MB/s`);
+  },
+  maxRedirects: 0 // Important: avoid buffering the entire stream
+});
+```
+
+<Warning>
+It's recommended to disable redirects (`maxRedirects: 0`) when uploading streams in Node.js to avoid buffering the entire stream in RAM.
+</Warning>
+
+<Note>
+Capturing FormData upload progress is not currently supported in Node.js environments.
+</Note>
+
+## Rate limiting with progress
+
+Combine progress tracking with rate limiting (Node.js HTTP adapter only):
+
+```javascript
+const { data } = await axios.post('https://example.com/upload', myBuffer, {
+  onUploadProgress: ({ progress, rate }) => {
+    const percentCompleted = (progress * 100).toFixed(2);
+    const speedKBps = ((rate || 0) / 1024).toFixed(2);
+    console.log(`Upload [${percentCompleted}%]: ${speedKBps} KB/s`);
+  },
+  maxRate: [100 * 1024] // 100KB/s upload limit
+});
+```
+
+## Progress throttling
+
+Axios automatically throttles progress events to fire a maximum of 3 times per second. This prevents performance issues when transferring large files.
+
+The throttling behavior:
+- Progress events fire at most 3 times per second
+- The first and last events always fire
+- Intermediate events are throttled to maintain the 3/second limit
+
+## Handling unknown content length
+
+Sometimes the server doesn't provide a `Content-Length` header, making the total size unknown:
+
+```javascript
+axios.get('/streaming-data', {
+  onDownloadProgress: (progressEvent) => {
+    if (progressEvent.lengthComputable) {
+      // Total size is known
+      const percent = Math.round(
+        (progressEvent.loaded * 100) / progressEvent.total
+      );
+      console.log(`Progress: ${percent}%`);
+    } else {
+      // Total size unknown - just show bytes loaded
+      const loadedMB = (progressEvent.loaded / 1024 / 1024).toFixed(2);
+      console.log(`Downloaded: ${loadedMB} MB`);
+    }
+  }
+});
+```
+
+## Cancellable progress tracking
+
+Combine progress tracking with request cancellation:
+
+```javascript
+const controller = new AbortController();
+
+axios.post('/upload', formData, {
+  signal: controller.signal,
+  onUploadProgress: (progressEvent) => {
+    const percent = Math.round(
+      (progressEvent.loaded * 100) / progressEvent.total
+    );
+    
+    updateProgressBar(percent);
+    
+    // Auto-cancel if upload is too slow
+    if (progressEvent.rate && progressEvent.rate < 10 * 1024) { // < 10KB/s
+      console.log('Upload too slow, canceling...');
+      controller.abort();
+    }
+  }
+}).catch(error => {
+  if (axios.isCancel(error)) {
+    console.log('Upload canceled');
+  }
+});
+
+// Or cancel manually
+// controller.abort();
+```
+
+## Progress with retry logic
+
+```javascript
+async function uploadWithRetry(file, maxRetries = 3) {
+  let retries = 0;
+  
+  while (retries < maxRetries) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await axios.post('/upload', formData, {
+        onUploadProgress: (progressEvent) => {
+          const percent = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          console.log(`Attempt ${retries + 1}: ${percent}%`);
+        },
+        timeout: 60000 // 60 second timeout
+      });
+      
+      return response;
+    } catch (error) {
+      retries++;
+      
+      if (retries >= maxRetries) {
+        throw error;
+      }
+      
+      console.log(`Upload failed, retrying... (${retries}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before retry
+    }
+  }
+}
+```
+
+## TypeScript support
+
+```typescript
+import axios, { AxiosProgressEvent } from 'axios';
+
+interface UploadStats {
+  percentCompleted: number;
+  loaded: string;
+  total: string;
+  speed: string;
+  eta: number;
+}
+
+function handleProgress(progressEvent: AxiosProgressEvent): UploadStats {
+  const percentCompleted = Math.round(
+    ((progressEvent.loaded || 0) * 100) / (progressEvent.total || 1)
+  );
+  
+  return {
+    percentCompleted,
+    loaded: formatBytes(progressEvent.loaded),
+    total: formatBytes(progressEvent.total || 0),
+    speed: formatBytes(progressEvent.rate || 0) + '/s',
+    eta: Math.ceil(progressEvent.estimated || 0)
+  };
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+}
+```

@@ -1,0 +1,286 @@
+---
+title: Request cancellation
+description: Cancel requests using AbortController or CancelToken to prevent unnecessary network activity and manage request lifecycles
+---
+
+Axios provides two ways to cancel requests: the modern `AbortController` API (recommended) and the legacy `CancelToken` API (deprecated). Request cancellation is useful for preventing unnecessary network activity, managing request lifecycles, and handling user-initiated cancellations.
+
+## AbortController (recommended)
+
+Starting from `v0.22.0`, Axios supports the standard `AbortController` API for canceling requests. This is the recommended approach as it aligns with modern web standards and the Fetch API.
+
+### Basic cancellation
+
+Create an `AbortController` instance and pass its signal to the request configuration:
+
+```javascript
+const controller = new AbortController();
+
+axios.get('/user/12345', {
+  signal: controller.signal
+}).then(function(response) {
+  console.log(response);
+}).catch(function(error) {
+  if (axios.isCancel(error)) {
+    console.log('Request canceled:', error.message);
+  }
+});
+
+// Cancel the request
+controller.abort();
+```
+
+### Cancellation with timeout
+
+Combine `AbortController` with a timeout to automatically cancel requests:
+
+```javascript
+const controller = new AbortController();
+const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+axios.get('/api/data', {
+  signal: controller.signal
+}).then(response => {
+  clearTimeout(timeoutId);
+  console.log(response.data);
+}).catch(error => {
+  if (axios.isCancel(error)) {
+    console.log('Request timed out');
+  }
+});
+```
+
+### Multiple requests with one controller
+
+You can cancel multiple requests using the same `AbortController`:
+
+```javascript
+const controller = new AbortController();
+
+Promise.all([
+  axios.get('/user/12345', { signal: controller.signal }),
+  axios.get('/user/12345/permissions', { signal: controller.signal }),
+  axios.get('/user/12345/settings', { signal: controller.signal })
+]).catch(error => {
+  if (axios.isCancel(error)) {
+    console.log('All requests canceled');
+  }
+});
+
+// Cancel all requests at once
+controller.abort();
+```
+
+## CancelToken (deprecated)
+
+<Warning>
+The `CancelToken` API is deprecated since v0.22.0 and should not be used in new projects. Use `AbortController` instead.
+</Warning>
+
+The `CancelToken` API is based on the withdrawn [cancelable promises proposal](https://github.com/tc39/proposal-cancelable-promises). While still supported for backward compatibility, it's recommended to migrate to `AbortController`.
+
+### Using CancelToken.source
+
+Create a cancel token using the `CancelToken.source` factory:
+
+```javascript
+const CancelToken = axios.CancelToken;
+const source = CancelToken.source();
+
+axios.get('/user/12345', {
+  cancelToken: source.token
+}).catch(function(thrown) {
+  if (axios.isCancel(thrown)) {
+    console.log('Request canceled:', thrown.message);
+  } else {
+    // handle error
+  }
+});
+
+axios.post('/user/12345', {
+  name: 'new name'
+}, {
+  cancelToken: source.token
+});
+
+// Cancel the requests (the message parameter is optional)
+source.cancel('Operation canceled by the user.');
+```
+
+### Using executor function
+
+Create a cancel token by passing an executor function:
+
+```javascript
+const CancelToken = axios.CancelToken;
+let cancel;
+
+axios.get('/user/12345', {
+  cancelToken: new CancelToken(function executor(c) {
+    // An executor function receives a cancel function as a parameter
+    cancel = c;
+  })
+});
+
+// Cancel the request
+cancel('Request canceled by user');
+```
+
+## Checking for cancellation
+
+Use the `axios.isCancel()` method to check if an error was caused by cancellation:
+
+```javascript
+axios.get('/api/data', { signal: controller.signal })
+  .catch(error => {
+    if (axios.isCancel(error)) {
+      console.log('Request was canceled');
+    } else {
+      console.error('Request failed:', error.message);
+    }
+  });
+```
+
+## Real-world examples
+
+<Tabs>
+  <Tab title="Search debouncing">
+    ```javascript
+    let controller = null;
+
+    function searchUsers(query) {
+      // Cancel the previous request
+      if (controller) {
+        controller.abort();
+      }
+
+      // Create a new controller for this request
+      controller = new AbortController();
+
+      return axios.get('/api/users/search', {
+        params: { q: query },
+        signal: controller.signal
+      });
+    }
+
+    // Only the last request will complete
+    searchUsers('joh');
+    searchUsers('john');
+    searchUsers('john doe');
+    ```
+  </Tab>
+  
+  <Tab title="Route navigation">
+    ```javascript
+    // React Router example
+    import { useEffect, useRef } from 'react';
+    import { useNavigate } from 'react-router-dom';
+
+    function UserProfile({ userId }) {
+      const controllerRef = useRef(null);
+
+      useEffect(() => {
+        controllerRef.current = new AbortController();
+
+        axios.get(`/api/users/${userId}`, {
+          signal: controllerRef.current.signal
+        }).then(response => {
+          // Update UI with user data
+        });
+
+        // Cleanup: cancel request when component unmounts or userId changes
+        return () => {
+          controllerRef.current.abort();
+        };
+      }, [userId]);
+
+      return <div>...</div>;
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Manual cancellation">
+    ```javascript
+    class UploadManager {
+      constructor() {
+        this.controller = null;
+      }
+
+      upload(file) {
+        this.controller = new AbortController();
+        const formData = new FormData();
+        formData.append('file', file);
+
+        return axios.post('/api/upload', formData, {
+          signal: this.controller.signal,
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            console.log(`Upload progress: ${percentCompleted}%`);
+          }
+        });
+      }
+
+      cancel() {
+        if (this.controller) {
+          this.controller.abort();
+          console.log('Upload canceled');
+        }
+      }
+    }
+
+    const manager = new UploadManager();
+    manager.upload(file);
+
+    // Later, user clicks cancel button
+    manager.cancel();
+    ```
+  </Tab>
+</Tabs>
+
+## Important notes
+
+<Note>
+- You can cancel multiple requests with the same `AbortController` or `CancelToken`
+- If a signal is already aborted when starting a request, the request is canceled immediately without making any network call
+- During the transition period, you can use both cancellation APIs for the same request
+- Canceled requests throw a `CanceledError` with the code `ERR_CANCELED`
+</Note>
+
+## Error handling
+
+When a request is canceled, Axios throws a `CanceledError`:
+
+```javascript
+try {
+  const response = await axios.get('/api/data', {
+    signal: controller.signal
+  });
+} catch (error) {
+  if (axios.isCancel(error)) {
+    // Request was canceled
+    console.log('Request canceled');
+  } else if (error.code === 'ERR_CANCELED') {
+    // Alternative way to check for cancellation
+    console.log('Request canceled (via error code)');
+  } else {
+    // Other error occurred
+    console.error('Error:', error.message);
+  }
+}
+```
+
+## Converting between APIs
+
+You can convert a `CancelToken` to an `AbortSignal` using the `toAbortSignal()` method:
+
+```javascript
+const source = CancelToken.source();
+const signal = source.token.toAbortSignal();
+
+axios.get('/api/data', { signal });
+
+// Cancel using the original CancelToken
+source.cancel('Canceled');
+```

@@ -1,0 +1,634 @@
+---
+title: TypeScript usage
+description: Complete guide to using Axios with TypeScript including type definitions, generic types, custom types, and best practices
+---
+
+Axios includes comprehensive TypeScript definitions out of the box, providing excellent type safety and IntelliSense support.
+
+## Basic usage
+
+Axios is fully typed and works seamlessly with TypeScript:
+
+```typescript
+import axios from 'axios';
+
+const response = await axios.get('/user/12345');
+console.log(response.data);
+```
+
+## Typing response data
+
+Use generics to type the response data:
+
+```typescript
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+const response = await axios.get<User>('/user/12345');
+// response.data is typed as User
+console.log(response.data.name); // ✅ Type-safe
+```
+
+## Request method signatures
+
+All Axios methods support generic type parameters:
+
+```typescript
+// GET request
+axios.get<ResponseType>(url, config?);
+
+// POST request
+axios.post<ResponseType, RequestDataType>(url, data?, config?);
+
+// Full signature
+axios.request<T = any, R = AxiosResponse<T>, D = any>(
+  config: AxiosRequestConfig<D>
+): Promise<R>;
+```
+
+### Generic type parameters
+
+<ParamField path="T" type="any">
+  The type of `response.data`
+</ParamField>
+
+<ParamField path="R" type="AxiosResponse<T>">
+  The type of the entire response object
+</ParamField>
+
+<ParamField path="D" type="any">
+  The type of the request data
+</ParamField>
+
+## Core type definitions
+
+### AxiosResponse
+
+```typescript
+interface AxiosResponse<T = any, D = any> {
+  data: T;
+  status: number;
+  statusText: string;
+  headers: RawAxiosResponseHeaders | AxiosResponseHeaders;
+  config: InternalAxiosRequestConfig<D>;
+  request?: any;
+}
+```
+
+### AxiosRequestConfig
+
+```typescript
+interface AxiosRequestConfig<D = any> {
+  url?: string;
+  method?: Method;
+  baseURL?: string;
+  transformRequest?: AxiosRequestTransformer | AxiosRequestTransformer[];
+  transformResponse?: AxiosResponseTransformer | AxiosResponseTransformer[];
+  headers?: RawAxiosRequestHeaders | AxiosHeaders;
+  params?: any;
+  paramsSerializer?: ParamsSerializerOptions | CustomParamsSerializer;
+  data?: D;
+  timeout?: number;
+  timeoutErrorMessage?: string;
+  withCredentials?: boolean;
+  adapter?: AxiosAdapterConfig | AxiosAdapterConfig[];
+  auth?: AxiosBasicCredentials;
+  responseType?: ResponseType;
+  responseEncoding?: responseEncoding;
+  xsrfCookieName?: string;
+  xsrfHeaderName?: string;
+  onUploadProgress?: (progressEvent: AxiosProgressEvent) => void;
+  onDownloadProgress?: (progressEvent: AxiosProgressEvent) => void;
+  maxContentLength?: number;
+  validateStatus?: ((status: number) => boolean) | null;
+  maxBodyLength?: number;
+  maxRedirects?: number;
+  beforeRedirect?: (options: Record<string, any>, responseDetails: {
+    headers: Record<string, string>;
+    statusCode: HttpStatusCode;
+  }) => void;
+  socketPath?: string | null;
+  transport?: any;
+  httpAgent?: any;
+  httpsAgent?: any;
+  proxy?: AxiosProxyConfig | false;
+  cancelToken?: CancelToken;
+  decompress?: boolean;
+  transitional?: TransitionalOptions;
+  signal?: GenericAbortSignal;
+  insecureHTTPParser?: boolean;
+  env?: {
+    FormData?: new (...args: any[]) => object;
+  };
+  formSerializer?: FormSerializerOptions;
+  maxRate?: number | [MaxUploadRate, MaxDownloadRate];
+  // ... additional properties
+}
+```
+
+### AxiosError
+
+```typescript
+class AxiosError<T = unknown, D = any> extends Error {
+  constructor(
+    message?: string,
+    code?: string,
+    config?: InternalAxiosRequestConfig<D>,
+    request?: any,
+    response?: AxiosResponse<T, D>
+  );
+
+  config?: InternalAxiosRequestConfig<D>;
+  code?: string;
+  request?: any;
+  response?: AxiosResponse<T, D>;
+  isAxiosError: boolean;
+  status?: number;
+  toJSON: () => object;
+}
+```
+
+## Typed requests
+
+### GET requests
+
+```typescript
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+// Simple GET
+const getUser = async (id: number) => {
+  const response = await axios.get<User>(`/users/${id}`);
+  return response.data;
+};
+
+// GET with params
+interface SearchParams {
+  query: string;
+  limit?: number;
+}
+
+const searchUsers = async (params: SearchParams) => {
+  const response = await axios.get<User[]>('/users/search', {
+    params
+  });
+  return response.data;
+};
+```
+
+### POST requests
+
+```typescript
+interface CreateUserData {
+  name: string;
+  email: string;
+  password: string;
+}
+
+interface CreateUserResponse {
+  id: number;
+  name: string;
+  email: string;
+  createdAt: string;
+}
+
+const createUser = async (data: CreateUserData) => {
+  const response = await axios.post<CreateUserResponse, CreateUserData>(
+    '/users',
+    data
+  );
+  return response.data;
+};
+```
+
+### PUT/PATCH requests
+
+```typescript
+interface UpdateUserData {
+  name?: string;
+  email?: string;
+}
+
+const updateUser = async (id: number, data: UpdateUserData) => {
+  const response = await axios.patch<User>(`/users/${id}`, data);
+  return response.data;
+};
+```
+
+## Typed instances
+
+Create typed Axios instances:
+
+```typescript
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+
+interface ApiConfig extends AxiosRequestConfig {
+  baseURL: string;
+}
+
+class ApiClient {
+  private client: AxiosInstance;
+
+  constructor(config: ApiConfig) {
+    this.client = axios.create(config);
+    this.setupInterceptors();
+  }
+
+  private setupInterceptors(): void {
+    this.client.interceptors.request.use(
+      (config) => {
+        // Add auth token
+        config.headers.Authorization = `Bearer ${getToken()}`;
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    this.client.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          // Handle unauthorized
+        }
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  async get<T>(url: string, config?: AxiosRequestConfig) {
+    const response = await this.client.get<T>(url, config);
+    return response.data;
+  }
+
+  async post<T, D = any>(url: string, data?: D, config?: AxiosRequestConfig) {
+    const response = await this.client.post<T>(url, data, config);
+    return response.data;
+  }
+}
+
+// Usage
+const api = new ApiClient({
+  baseURL: 'https://api.example.com'
+});
+
+const user = await api.get<User>('/user/12345');
+```
+
+## Error handling with types
+
+```typescript
+import axios, { AxiosError } from 'axios';
+
+interface ErrorResponse {
+  message: string;
+  code: string;
+  details?: Record<string, any>;
+}
+
+async function fetchUser(id: number) {
+  try {
+    const response = await axios.get<User>(`/users/${id}`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError<ErrorResponse>(error)) {
+      // error is typed as AxiosError<ErrorResponse>
+      console.error('Error message:', error.response?.data.message);
+      console.error('Error code:', error.response?.data.code);
+      console.error('Status:', error.response?.status);
+      
+      if (error.response) {
+        // Server responded with error
+        throw new Error(error.response.data.message);
+      } else if (error.request) {
+        // Request made but no response
+        throw new Error('No response from server');
+      } else {
+        // Error in request setup
+        throw new Error('Request setup failed');
+      }
+    }
+    
+    // Non-Axios error
+    throw error;
+  }
+}
+```
+
+## Custom headers
+
+```typescript
+import { AxiosRequestConfig, AxiosHeaders, RawAxiosRequestHeaders } from 'axios';
+
+// Type-safe custom headers
+interface CustomHeaders extends RawAxiosRequestHeaders {
+  'X-Custom-Header': string;
+  'X-API-Key': string;
+}
+
+const config: AxiosRequestConfig = {
+  headers: {
+    'X-Custom-Header': 'value',
+    'X-API-Key': 'my-api-key'
+  } as CustomHeaders
+};
+
+axios.get('/data', config);
+
+// Using AxiosHeaders class
+const headers = new AxiosHeaders();
+headers.set('X-Custom-Header', 'value');
+headers.setContentType('application/json');
+
+axios.get('/data', { headers });
+```
+
+## Interceptors with types
+
+```typescript
+import axios, { 
+  InternalAxiosRequestConfig, 
+  AxiosResponse, 
+  AxiosError 
+} from 'axios';
+
+// Request interceptor
+axios.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    config.headers.Authorization = `Bearer ${token}`;
+    return config;
+  },
+  (error: AxiosError) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor
+axios.interceptors.response.use(
+  (response: AxiosResponse) => {
+    // Transform response data
+    return response;
+  },
+  (error: AxiosError<ErrorResponse>) => {
+    if (error.response?.status === 401) {
+      // Handle unauthorized
+    }
+    return Promise.reject(error);
+  }
+);
+```
+
+## Progress events
+
+```typescript
+import { AxiosProgressEvent } from 'axios';
+
+axios.post('/upload', formData, {
+  onUploadProgress: (progressEvent: AxiosProgressEvent) => {
+    const percentCompleted = Math.round(
+      ((progressEvent.loaded || 0) * 100) / (progressEvent.total || 1)
+    );
+    console.log(percentCompleted);
+  },
+  onDownloadProgress: (progressEvent: AxiosProgressEvent) => {
+    console.log('Downloaded:', progressEvent.loaded);
+  }
+});
+```
+
+## Type guards
+
+```typescript
+import axios, { AxiosError } from 'axios';
+
+// Type guard for Axios errors
+function isAxiosError(error: unknown): error is AxiosError {
+  return axios.isAxiosError(error);
+}
+
+// Type guard for specific error response
+function isErrorResponse(error: unknown): error is AxiosError<ErrorResponse> {
+  return (
+    axios.isAxiosError(error) &&
+    error.response !== undefined &&
+    'message' in error.response.data
+  );
+}
+
+// Usage
+try {
+  await axios.get('/data');
+} catch (error) {
+  if (isErrorResponse(error)) {
+    console.error(error.response.data.message);
+  }
+}
+```
+
+## Generic API service
+
+```typescript
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+
+export class ApiService<T> {
+  private client: AxiosInstance;
+  private endpoint: string;
+
+  constructor(baseURL: string, endpoint: string) {
+    this.client = axios.create({ baseURL });
+    this.endpoint = endpoint;
+  }
+
+  async getAll(config?: AxiosRequestConfig): Promise<T[]> {
+    const response = await this.client.get<T[]>(this.endpoint, config);
+    return response.data;
+  }
+
+  async getById(id: number | string, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.client.get<T>(`${this.endpoint}/${id}`, config);
+    return response.data;
+  }
+
+  async create(data: Partial<T>, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.client.post<T>(this.endpoint, data, config);
+    return response.data;
+  }
+
+  async update(
+    id: number | string,
+    data: Partial<T>,
+    config?: AxiosRequestConfig
+  ): Promise<T> {
+    const response = await this.client.patch<T>(
+      `${this.endpoint}/${id}`,
+      data,
+      config
+    );
+    return response.data;
+  }
+
+  async delete(id: number | string, config?: AxiosRequestConfig): Promise<void> {
+    await this.client.delete(`${this.endpoint}/${id}`, config);
+  }
+}
+
+// Usage
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+const userService = new ApiService<User>(
+  'https://api.example.com',
+  '/users'
+);
+
+const users = await userService.getAll();
+const user = await userService.getById(1);
+const newUser = await userService.create({ name: 'John', email: 'john@example.com' });
+```
+
+## HTTP status codes
+
+Axios provides a typed enum for HTTP status codes:
+
+```typescript
+import { HttpStatusCode } from 'axios';
+
+if (response.status === HttpStatusCode.Ok) {
+  // 200
+}
+
+if (error.response?.status === HttpStatusCode.NotFound) {
+  // 404
+}
+
+if (error.response?.status === HttpStatusCode.Unauthorized) {
+  // 401
+}
+```
+
+## Best practices
+
+<Note>
+1. **Always type response data**: Use generics to specify the expected response type
+2. **Create interfaces for API responses**: Define clear contracts between frontend and backend
+3. **Use type guards**: Safely narrow error types with `axios.isAxiosError()`
+4. **Leverage IntelliSense**: TypeScript provides excellent autocomplete for config options
+5. **Create typed API clients**: Encapsulate Axios instances in classes for reusability
+6. **Handle errors properly**: Type error responses to access error data safely
+7. **Use strict null checks**: Enable `strictNullChecks` in tsconfig.json
+</Note>
+
+## Complete example
+
+```typescript
+import axios, { 
+  AxiosInstance, 
+  AxiosError, 
+  InternalAxiosRequestConfig,
+  AxiosResponse 
+} from 'axios';
+
+// API Response types
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+interface CreateUserRequest {
+  name: string;
+  email: string;
+  password: string;
+}
+
+interface ApiError {
+  message: string;
+  code: string;
+  details?: Record<string, string[]>;
+}
+
+// API Client
+class UserApiClient {
+  private client: AxiosInstance;
+
+  constructor(baseURL: string) {
+    this.client = axios.create({ baseURL });
+    this.setupInterceptors();
+  }
+
+  private setupInterceptors(): void {
+    this.client.interceptors.request.use(
+      (config: InternalAxiosRequestConfig) => {
+        const token = localStorage.getItem('token');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error: AxiosError) => Promise.reject(error)
+    );
+
+    this.client.interceptors.response.use(
+      (response: AxiosResponse) => response,
+      (error: AxiosError<ApiError>) => {
+        if (error.response?.status === 401) {
+          // Redirect to login
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  async getUsers(): Promise<User[]> {
+    try {
+      const response = await this.client.get<User[]>('/users');
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async createUser(data: CreateUserRequest): Promise<User> {
+    try {
+      const response = await this.client.post<User>('/users', data);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  private handleError(error: unknown): Error {
+    if (axios.isAxiosError<ApiError>(error)) {
+      const message = error.response?.data.message || error.message;
+      return new Error(message);
+    }
+    return error instanceof Error ? error : new Error('Unknown error');
+  }
+}
+
+// Usage
+const api = new UserApiClient('https://api.example.com');
+
+try {
+  const users = await api.getUsers();
+  console.log(users);
+  
+  const newUser = await api.createUser({
+    name: 'John Doe',
+    email: 'john@example.com',
+    password: 'secret123'
+  });
+  console.log(newUser);
+} catch (error) {
+  console.error('API Error:', error.message);
+}
+```

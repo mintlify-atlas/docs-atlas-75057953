@@ -1,80 +1,269 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick start
+description: Learn how to make HTTP requests with Axios in minutes
 ---
 
-## Get started in three steps
+# Quick start
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+This guide will help you make your first HTTP requests with Axios. You'll learn the basic patterns for GET and POST requests that you'll use in most applications.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  Make sure you've [installed Axios](/installation) before following this guide.
 </Note>
+
+## Making a GET request
+
+The simplest way to fetch data with Axios is using `async/await`:
+
+```javascript
+import axios from 'axios';
+
+try {
+  const response = await axios.get('/user?ID=12345');
+  console.log(response);
+} catch (error) {
+  console.error(error);
+}
+```
+
+### Using promises
+
+You can also use promise chaining if you prefer:
+
+```javascript
+axios.get('/user?ID=12345')
+  .then(function (response) {
+    console.log(response);
+  })
+  .catch(function (error) {
+    console.log(error);
+  })
+  .finally(function () {
+    // always executed
+  });
+```
+
+### Passing parameters
+
+Instead of building query strings manually, use the `params` option:
+
+```javascript
+axios.get('/user', {
+  params: {
+    ID: 12345
+  }
+})
+  .then(function (response) {
+    console.log(response);
+  })
+  .catch(function (error) {
+    console.log(error);
+  });
+```
+
+## Making a POST request
+
+Sending data to a server is just as simple:
+
+```javascript
+const response = await axios.post('/user', {
+  firstName: 'Fred',
+  lastName: 'Flintstone'
+});
+console.log(response);
+```
+
+Axios automatically serializes JavaScript objects to JSON and sets the appropriate `Content-Type` header.
+
+## Understanding the response
+
+Every Axios response contains these properties:
+
+```javascript
+const response = await axios.get('/user/12345');
+
+console.log(response.data);       // The response body
+console.log(response.status);     // HTTP status code (e.g., 200)
+console.log(response.statusText); // HTTP status message (e.g., 'OK')
+console.log(response.headers);    // Response headers
+console.log(response.config);     // The config used for the request
+```
+
+## Using the Axios API
+
+You can also pass a configuration object to `axios()` directly:
+
+<Steps>
+  <Step title="Send a POST request with config">
+    ```javascript
+    axios({
+      method: 'post',
+      url: '/user/12345',
+      data: {
+        firstName: 'Fred',
+        lastName: 'Flintstone'
+      }
+    });
+    ```
+  </Step>
+  
+  <Step title="Send a GET request (default method)">
+    ```javascript
+    // When no method is specified, GET is used by default
+    axios('/user/12345');
+    ```
+  </Step>
+  
+  <Step title="Download a file in Node.js">
+    ```javascript
+    const response = await axios({
+      method: 'get',
+      url: 'https://bit.ly/2mTM3nY',
+      responseType: 'stream'
+    });
+    
+    response.data.pipe(fs.createWriteStream('ada_lovelace.jpg'));
+    ```
+  </Step>
+</Steps>
+
+## Handling errors
+
+Always handle potential errors when making HTTP requests:
+
+```javascript
+axios.get('/user/12345')
+  .catch(function (error) {
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.log(error.response.data);
+      console.log(error.response.status);
+      console.log(error.response.headers);
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.log(error.request);
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.log('Error', error.message);
+    }
+    console.log(error.config);
+  });
+```
+
+## Making multiple concurrent requests
+
+Use `Promise.all()` to make multiple requests simultaneously:
+
+```javascript
+function getUserAccount() {
+  return axios.get('/user/12345');
+}
+
+function getUserPermissions() {
+  return axios.get('/user/12345/permissions');
+}
+
+Promise.all([getUserAccount(), getUserPermissions()])
+  .then(function (results) {
+    const acct = results[0];
+    const perm = results[1];
+  });
+```
+
+## Creating an instance
+
+For better organization, create an Axios instance with custom configuration:
+
+```javascript
+const instance = axios.create({
+  baseURL: 'https://some-domain.com/api/',
+  timeout: 1000,
+  headers: {'X-Custom-Header': 'foobar'}
+});
+
+// Now use the instance
+const response = await instance.get('/users');
+```
+
+<Note>
+  Creating instances is useful when you need different configurations for different APIs or want to set up interceptors for specific endpoints.
+</Note>
+
+## Request method aliases
+
+Axios provides convenient aliases for common HTTP methods:
+
+<CodeGroup>
+
+```javascript GET
+axios.get(url[, config])
+```
+
+```javascript POST
+axios.post(url[, data[, config]])
+```
+
+```javascript PUT
+axios.put(url[, data[, config]])
+```
+
+```javascript PATCH
+axios.patch(url[, data[, config]])
+```
+
+```javascript DELETE
+axios.delete(url[, config])
+```
+
+```javascript HEAD
+axios.head(url[, config])
+```
+
+```javascript OPTIONS
+axios.options(url[, config])
+```
+
+</CodeGroup>
+
+<Note>
+  When using alias methods, `url`, `method`, and `data` properties don't need to be specified in the config.
+</Note>
+
+## Async/await pattern
+
+For cleaner code, wrap your requests in async functions:
+
+```javascript
+async function getUser() {
+  try {
+    const response = await axios.get('/user?ID=12345');
+    console.log(response);
+  } catch (error) {
+    console.error(error);
+  }
+}
+```
+
+<Warning>
+  `async/await` is part of ECMAScript 2017 and is not supported in Internet Explorer and older browsers. Use promise chaining if you need to support legacy browsers.
+</Warning>
+
+## What's next?
+
+Now that you know the basics, explore more advanced features:
+
+<CardGroup cols={2}>
+  <Card title="Request configuration" icon="gear" href="/advanced/request-config">
+    Learn about all available configuration options
+  </Card>
+  <Card title="Interceptors" icon="filter" href="/core/interceptors">
+    Transform requests and responses globally
+  </Card>
+  <Card title="Error handling" icon="triangle-exclamation" href="/core/error-handling">
+    Master error handling patterns and edge cases
+  </Card>
+  <Card title="Cancellation" icon="ban" href="/advanced/cancellation">
+    Cancel requests using AbortController
+  </Card>
+</CardGroup>

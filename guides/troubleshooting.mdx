@@ -1,0 +1,555 @@
+---
+title: Troubleshooting
+description: Common issues and solutions when using Axios
+---
+
+## Network errors
+
+<Accordion title="Network Error / ERR_NETWORK">
+  This error occurs when the request fails to reach the server.
+
+  **Common causes:**
+  - CORS policy blocking the request
+  - Server is down or unreachable
+  - Network connectivity issues
+  - Mixed content policy (HTTP request from HTTPS page)
+
+  **Solutions:**
+
+  ```javascript
+  // Check if it's a network error
+  axios.get('/api/data').catch(error => {
+    if (error.code === 'ERR_NETWORK') {
+      console.error('Network error - check CORS, server status, or connectivity');
+    }
+  });
+  ```
+
+  For CORS issues, ensure your server includes proper CORS headers:
+  ```javascript
+  // Server-side (Express example)
+  app.use(cors({
+    origin: 'https://your-frontend.com',
+    credentials: true
+  }));
+  ```
+
+  For development, use a proxy in your frontend config:
+  ```javascript
+  // vite.config.js
+  export default {
+    server: {
+      proxy: {
+        '/api': 'http://localhost:3000'
+      }
+    }
+  };
+  ```
+</Accordion>
+
+<Accordion title="Request timeout (ETIMEDOUT / ECONNABORTED)">
+  Request exceeds the configured timeout period.
+
+  **Solutions:**
+
+  ```javascript
+  // Increase timeout for specific requests
+  axios.get('/api/large-data', {
+    timeout: 30000 // 30 seconds
+  });
+
+  // Handle timeout errors specifically
+  axios.get('/api/data').catch(error => {
+    if (error.code === 'ECONNABORTED') {
+      console.error('Request timed out');
+      // Retry or show timeout message
+    }
+  });
+
+  // Set different timeouts per operation
+  const api = axios.create({
+    baseURL: 'https://api.example.com',
+    timeout: 5000
+  });
+
+  // Override for long operations
+  api.post('/reports/generate', data, { timeout: 60000 });
+  ```
+</Accordion>
+
+## Response errors
+
+<Accordion title="401 Unauthorized">
+  Authentication is required or has failed.
+
+  **Solutions:**
+
+  ```javascript
+  // Implement token refresh
+  axios.interceptors.response.use(
+    response => response,
+    async error => {
+      if (error.response?.status === 401) {
+        try {
+          // Try to refresh token
+          const newToken = await refreshToken();
+          
+          // Retry original request with new token
+          error.config.headers.Authorization = `Bearer ${newToken}`;
+          return axios.request(error.config);
+        } catch (refreshError) {
+          // Redirect to login
+          window.location.href = '/login';
+          return Promise.reject(refreshError);
+        }
+      }
+      return Promise.reject(error);
+    }
+  );
+  ```
+</Accordion>
+
+<Accordion title="403 Forbidden">
+  Server understood the request but refuses to authorize it.
+
+  **Solutions:**
+
+  ```javascript
+  // Check for proper permissions
+  axios.get('/admin/users').catch(error => {
+    if (error.response?.status === 403) {
+      console.error('Insufficient permissions');
+      // Show access denied message
+      // Redirect to appropriate page
+    }
+  });
+  ```
+</Accordion>
+
+<Accordion title="404 Not Found">
+  The requested resource doesn't exist.
+
+  **Solutions:**
+
+  ```javascript
+  // Handle gracefully
+  async function getUser(id) {
+    try {
+      const response = await axios.get(`/api/users/${id}`);
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        console.log(`User ${id} not found`);
+        return null; // Return null or default value
+      }
+      throw error;
+    }
+  }
+  ```
+</Accordion>
+
+<Accordion title="500 Internal Server Error">
+  Server encountered an error processing the request.
+
+  **Solutions:**
+
+  ```javascript
+  // Implement retry logic
+  async function fetchWithRetry(url, retries = 3) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await axios.get(url);
+      } catch (error) {
+        if (error.response?.status === 500 && i < retries - 1) {
+          // Wait before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+          continue;
+        }
+        throw error;
+      }
+    }
+  }
+  ```
+</Accordion>
+
+## Request configuration issues
+
+<Accordion title="Data not being sent in POST/PUT requests">
+  **Common causes:**
+  - Incorrect Content-Type header
+  - Data not properly formatted
+  - Server expecting different format
+
+  **Solutions:**
+
+  ```javascript
+  // JSON data (default)
+  axios.post('/api/users', {
+    name: 'John',
+    email: 'john@example.com'
+  });
+
+  // URL-encoded form data
+  const params = new URLSearchParams();
+  params.append('name', 'John');
+  params.append('email', 'john@example.com');
+  
+  axios.post('/api/users', params, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  });
+
+  // Multipart form data
+  const formData = new FormData();
+  formData.append('name', 'John');
+  formData.append('file', fileInput.files[0]);
+  
+  axios.post('/api/users', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  ```
+</Accordion>
+
+<Accordion title="Query parameters not working">
+  **Solutions:**
+
+  ```javascript
+  // Correct way to send query params
+  axios.get('/api/users', {
+    params: {
+      page: 1,
+      limit: 10,
+      sort: 'name'
+    }
+  });
+  // Sends: /api/users?page=1&limit=10&sort=name
+
+  // For arrays
+  axios.get('/api/users', {
+    params: {
+      ids: [1, 2, 3]
+    },
+    paramsSerializer: {
+      indexes: null // /api/users?ids=1&ids=2&ids=3
+    }
+  });
+
+  // Manual URL construction (not recommended)
+  const params = new URLSearchParams({ page: 1, limit: 10 });
+  axios.get(`/api/users?${params.toString()}`);
+  ```
+</Accordion>
+
+<Accordion title="Headers not being sent">
+  **Solutions:**
+
+  ```javascript
+  // Set headers per request
+  axios.get('/api/data', {
+    headers: {
+      'Authorization': 'Bearer token',
+      'X-Custom-Header': 'value'
+    }
+  });
+
+  // Set default headers for instance
+  const api = axios.create({
+    baseURL: 'https://api.example.com'
+  });
+  
+  api.defaults.headers.common['Authorization'] = 'Bearer token';
+  api.defaults.headers.post['Content-Type'] = 'application/json';
+
+  // Using interceptors
+  api.interceptors.request.use(config => {
+    config.headers['X-Request-ID'] = generateRequestId();
+    return config;
+  });
+  ```
+</Accordion>
+
+## Interceptor issues
+
+<Accordion title="Interceptors not firing">
+  **Common causes:**
+  - Using wrong axios instance
+  - Interceptor added after requests made
+  - Error in interceptor code
+
+  **Solutions:**
+
+  ```javascript
+  // Ensure you're using the same instance
+  const api = axios.create();
+  
+  // Add interceptors BEFORE making requests
+  api.interceptors.request.use(
+    config => {
+      console.log('Request interceptor fired');
+      return config;
+    },
+    error => {
+      console.log('Request error interceptor fired');
+      return Promise.reject(error);
+    }
+  );
+
+  // Now make requests
+  api.get('/api/data');
+
+  // Check for errors in interceptor
+  api.interceptors.response.use(
+    response => {
+      try {
+        // Your code here
+        return response;
+      } catch (error) {
+        console.error('Interceptor error:', error);
+        return response; // Return response to continue chain
+      }
+    }
+  );
+  ```
+</Accordion>
+
+<Accordion title="Infinite interceptor loops">
+  **Solutions:**
+
+  ```javascript
+  // Prevent infinite loops in retry logic
+  api.interceptors.response.use(
+    response => response,
+    async error => {
+      const config = error.config;
+      
+      // Prevent infinite loops
+      if (config._retry) {
+        return Promise.reject(error);
+      }
+      
+      config._retry = true;
+      
+      // Retry logic here
+      return api.request(config);
+    }
+  );
+
+  // Limit retry attempts
+  api.interceptors.response.use(
+    response => response,
+    async error => {
+      const config = error.config;
+      config._retryCount = config._retryCount || 0;
+      
+      if (config._retryCount >= 3) {
+        return Promise.reject(error);
+      }
+      
+      config._retryCount++;
+      return api.request(config);
+    }
+  );
+  ```
+</Accordion>
+
+## TypeScript issues
+
+<Accordion title="Type errors with response data">
+  **Solutions:**
+
+  ```typescript
+  interface User {
+    id: number;
+    name: string;
+  }
+
+  // Specify response type
+  const response = await axios.get<User>('/api/user/1');
+  const user = response.data; // Type is User
+
+  // For wrapped responses
+  interface ApiResponse<T> {
+    data: T;
+    status: string;
+  }
+
+  const response = await axios.get<ApiResponse<User>>('/api/user/1');
+  const user = response.data.data; // Type is User
+
+  // Type guard for error checking
+  if (axios.isAxiosError(error)) {
+    // TypeScript knows this is AxiosError
+    console.log(error.response?.data);
+  }
+  ```
+</Accordion>
+
+## Browser-specific issues
+
+<Accordion title="Requests fail in older browsers">
+  **Solutions:**
+
+  ```javascript
+  // Add Promise polyfill for older browsers
+  // npm install es6-promise
+  import 'es6-promise/auto';
+  import axios from 'axios';
+
+  // Or use a ponyfill
+  // npm install promise-polyfill
+  import 'promise-polyfill/src/polyfill';
+  ```
+</Accordion>
+
+<Accordion title="File uploads not working">
+  **Solutions:**
+
+  ```javascript
+  // Browser file upload
+  const input = document.querySelector('input[type="file"]');
+  const formData = new FormData();
+  formData.append('file', input.files[0]);
+  
+  axios.post('/api/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    },
+    onUploadProgress: progressEvent => {
+      const percentCompleted = Math.round(
+        (progressEvent.loaded * 100) / progressEvent.total
+      );
+      console.log(`Upload ${percentCompleted}% complete`);
+    }
+  });
+
+  // Multiple files
+  const files = Array.from(input.files);
+  files.forEach(file => {
+    formData.append('files', file);
+  });
+  ```
+</Accordion>
+
+## Node.js-specific issues
+
+<Accordion title="SSL certificate errors">
+  **Solutions:**
+
+  ```javascript
+  // Disable SSL verification (NOT recommended for production)
+  const https = require('https');
+  const agent = new https.Agent({
+    rejectUnauthorized: false
+  });
+  
+  axios.get('https://self-signed.example.com', {
+    httpsAgent: agent
+  });
+
+  // Use custom certificate
+  const fs = require('fs');
+  const agent = new https.Agent({
+    ca: fs.readFileSync('./path/to/ca.pem')
+  });
+  
+  axios.get('https://example.com', {
+    httpsAgent: agent
+  });
+  ```
+</Accordion>
+
+<Accordion title="Request body size limits">
+  **Solutions:**
+
+  ```javascript
+  // Increase max body length (Node.js)
+  axios.post('/api/large-data', largeData, {
+    maxBodyLength: Infinity,
+    maxContentLength: Infinity
+  });
+
+  // Server-side (Express)
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
+  ```
+</Accordion>
+
+## Debugging tips
+
+### Enable request logging
+
+```javascript
+axios.interceptors.request.use(request => {
+  console.log('Starting Request', {
+    method: request.method,
+    url: request.url,
+    headers: request.headers,
+    data: request.data
+  });
+  return request;
+});
+
+axios.interceptors.response.use(
+  response => {
+    console.log('Response:', {
+      status: response.status,
+      data: response.data
+    });
+    return response;
+  },
+  error => {
+    console.error('Error Response:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
+    return Promise.reject(error);
+  }
+);
+```
+
+### Use browser DevTools
+
+<Steps>
+  <Step title="Open Network tab">
+    Open browser DevTools (F12) and go to Network tab
+  </Step>
+  <Step title="Filter XHR/Fetch">
+    Filter by XHR or Fetch to see only API requests
+  </Step>
+  <Step title="Inspect requests">
+    Click on a request to see:
+    - Request headers and body
+    - Response headers and body
+    - Timing information
+    - CORS details
+  </Step>
+  <Step title="Check Console">
+    Look for CORS errors or other warnings in the Console tab
+  </Step>
+</Steps>
+
+### Test with curl
+
+```bash
+# Test if endpoint is accessible
+curl -X GET https://api.example.com/data
+
+# Test with headers
+curl -X GET https://api.example.com/data \
+  -H "Authorization: Bearer token" \
+  -H "Content-Type: application/json"
+
+# Test POST request
+curl -X POST https://api.example.com/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"John","email":"john@example.com"}'
+```
+
+<CardGroup cols={2}>
+  <Card title="Error handling" icon="triangle-exclamation" href="/core/error-handling">
+    Comprehensive error handling guide
+  </Card>
+  <Card title="Best practices" icon="star" href="/guides/best-practices">
+    Recommended patterns and practices
+  </Card>
+</CardGroup>

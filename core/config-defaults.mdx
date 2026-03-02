@@ -1,0 +1,297 @@
+---
+title: Config defaults
+description: Set global and instance-level configuration defaults for your Axios requests
+---
+
+Axios allows you to specify configuration defaults that will be applied to every request, reducing repetition and centralizing common settings.
+
+## Global defaults
+
+Set defaults that apply to all Axios requests in your application:
+
+```javascript
+import axios from 'axios';
+
+axios.defaults.baseURL = 'https://api.example.com';
+
+// Important: If axios is used with multiple domains, the AUTH_TOKEN will be sent to all of them.
+// See below for an example using Custom instance defaults instead.
+axios.defaults.headers.common['Authorization'] = AUTH_TOKEN;
+
+axios.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded';
+```
+
+<Warning>
+Be cautious when setting global headers like `Authorization`. They will be sent to **all** requests, including those to different domains. Use custom instances for domain-specific configurations.
+</Warning>
+
+## Custom instance defaults
+
+Create Axios instances with their own default configurations. This is the recommended approach for applications making requests to multiple APIs:
+
+<Tabs>
+  <Tab title="At creation">
+    Set defaults when creating the instance:
+    ```javascript
+    const instance = axios.create({
+      baseURL: 'https://api.example.com',
+      timeout: 1000,
+      headers: { 'X-Custom-Header': 'foobar' }
+    });
+    ```
+  </Tab>
+  
+  <Tab title="After creation">
+    Modify defaults after the instance is created:
+    ```javascript
+    const instance = axios.create({
+      baseURL: 'https://api.example.com'
+    });
+
+    // Alter defaults after instance has been created
+    instance.defaults.headers.common['Authorization'] = AUTH_TOKEN;
+    instance.defaults.timeout = 2500;
+    ```
+  </Tab>
+</Tabs>
+
+## Common default configurations
+
+### Base URL
+
+Set a base URL that will be prepended to all relative URLs:
+
+```javascript
+const api = axios.create({
+  baseURL: 'https://api.example.com/v1'
+});
+
+// This will request https://api.example.com/v1/users
+await api.get('/users');
+
+// Absolute URLs override the baseURL (when allowAbsoluteUrls is true, which is default)
+await api.get('https://another-api.com/data');
+```
+
+<Note>
+The `baseURL` will be prepended to `url` unless `url` is absolute and `allowAbsoluteUrls` is set to `true` (default behavior).
+</Note>
+
+### Timeout
+
+Set a default timeout for all requests:
+
+```javascript
+const instance = axios.create({
+  timeout: 5000 // 5 seconds
+});
+
+// This request will timeout after 5 seconds if no response
+await instance.get('/slow-endpoint');
+```
+
+### Headers
+
+Configure default headers for all requests or specific methods:
+
+<CodeGroup>
+```javascript Common headers
+const api = axios.create({
+  headers: {
+    common: {
+      'Accept': 'application/json',
+      'X-API-Key': 'your-api-key'
+    }
+  }
+});
+```
+
+```javascript Method-specific headers
+const api = axios.create({
+  headers: {
+    common: {
+      'Accept': 'application/json'
+    },
+    post: {
+      'Content-Type': 'application/json'
+    },
+    put: {
+      'Content-Type': 'application/json'
+    }
+  }
+});
+```
+
+```javascript After creation
+const api = axios.create();
+
+api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+api.defaults.headers.post['Content-Type'] = 'application/json';
+```
+</CodeGroup>
+
+### Authentication
+
+Set default authentication for all requests:
+
+```javascript
+const api = axios.create({
+  baseURL: 'https://api.example.com',
+  auth: {
+    username: 'janedoe',
+    password: 's00pers3cret'
+  }
+});
+```
+
+### Other common defaults
+
+```javascript
+const instance = axios.create({
+  baseURL: 'https://api.example.com',
+  timeout: 10000,
+  withCredentials: true, // Send cookies with cross-origin requests
+  responseType: 'json', // Default response type
+  maxRedirects: 5, // Maximum number of redirects to follow
+  validateStatus: (status) => status >= 200 && status < 300
+});
+```
+
+## Config precedence order
+
+When the same configuration option is set in multiple places, Axios merges them with a specific precedence order:
+
+1. Library defaults (defined in `lib/defaults/index.js`)
+2. Instance `defaults` property
+3. Request `config` argument
+
+The latter takes precedence over the former.
+
+### Example
+
+```javascript
+// 1. Create an instance using the config defaults provided by the library
+// At this point the timeout config value is `0` as is the default for the library
+const instance = axios.create();
+
+// 2. Override timeout default for the library
+// Now all requests using this instance will wait 2.5 seconds before timing out
+instance.defaults.timeout = 2500;
+
+// 3. Override timeout for this request as it's known to take a long time
+instance.get('/longRequest', {
+  timeout: 5000
+});
+```
+
+In this example:
+- The first request would use timeout `2500` (instance default)
+- The `/longRequest` uses timeout `5000` (request config)
+
+## Practical examples
+
+### Multiple API clients
+
+Create separate instances for different services:
+
+```javascript
+// API v1 client
+const apiV1 = axios.create({
+  baseURL: 'https://api.example.com/v1',
+  timeout: 5000,
+  headers: {
+    'X-API-Version': '1.0'
+  }
+});
+
+// API v2 client
+const apiV2 = axios.create({
+  baseURL: 'https://api.example.com/v2',
+  timeout: 10000,
+  headers: {
+    'X-API-Version': '2.0'
+  }
+});
+
+// Third-party service
+const thirdPartyAPI = axios.create({
+  baseURL: 'https://external-api.com',
+  timeout: 15000,
+  headers: {
+    'Authorization': `Bearer ${THIRD_PARTY_TOKEN}`
+  }
+});
+```
+
+### Environment-based configuration
+
+```javascript
+const baseURL = process.env.NODE_ENV === 'production'
+  ? 'https://api.example.com'
+  : 'http://localhost:3000';
+
+const api = axios.create({
+  baseURL,
+  timeout: 10000
+});
+```
+
+### Authenticated requests
+
+```javascript
+let authToken = null;
+
+const api = axios.create({
+  baseURL: 'https://api.example.com'
+});
+
+// Set token after login
+export function setAuthToken(token) {
+  authToken = token;
+  api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+}
+
+// Clear token on logout
+export function clearAuthToken() {
+  authToken = null;
+  delete api.defaults.headers.common['Authorization'];
+}
+```
+
+### Form data defaults
+
+```javascript
+const formAPI = axios.create({
+  baseURL: 'https://api.example.com',
+  headers: {
+    'Content-Type': 'multipart/form-data'
+  },
+  formSerializer: {
+    dots: true, // use dots instead of brackets
+    metaTokens: true, // keep special endings like {}
+    indexes: false // use empty brackets for arrays
+  }
+});
+```
+
+## TypeScript support
+
+Axios provides TypeScript definitions for defaults:
+
+```typescript
+import axios, { CreateAxiosDefaults } from 'axios';
+
+const config: CreateAxiosDefaults = {
+  baseURL: 'https://api.example.com',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+};
+
+const instance = axios.create(config);
+
+// Modify defaults with type safety
+instance.defaults.timeout = 5000;
+instance.defaults.headers.common['Authorization'] = 'Bearer token';
+```

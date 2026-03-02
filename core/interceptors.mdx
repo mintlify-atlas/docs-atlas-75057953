@@ -1,0 +1,417 @@
+---
+title: Interceptors
+description: Intercept and transform requests and responses with Axios interceptors
+---
+
+Interceptors allow you to run code or modify requests before they are sent and responses before they reach `then` or `catch`.
+
+## Request interceptors
+
+Intercept requests before they are sent to the server:
+
+```javascript
+const instance = axios.create();
+
+// Add a request interceptor
+instance.interceptors.request.use(
+  function (config) {
+    // Do something before the request is sent
+    config.headers.Authorization = `Bearer ${getToken()}`;
+    return config;
+  },
+  function (error) {
+    // Do something with the request error
+    return Promise.reject(error);
+  }
+);
+```
+
+## Response interceptors
+
+Intercept responses before they are handled by `then` or `catch`:
+
+```javascript
+const instance = axios.create();
+
+// Add a response interceptor
+instance.interceptors.response.use(
+  function (response) {
+    // Any status code that lies within the range of 2xx causes this function to trigger
+    // Do something with response data
+    return response;
+  },
+  function (error) {
+    // Any status codes that fall outside the range of 2xx cause this function to trigger
+    // Do something with response error
+    return Promise.reject(error);
+  }
+);
+```
+
+## Common use cases
+
+### Authentication
+
+Add authentication tokens to every request:
+
+```javascript
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+```
+
+### Automatic token refresh
+
+Refresh expired tokens automatically:
+
+```javascript
+axios.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    
+    if (error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      try {
+        const { data } = await axios.post('/auth/refresh', {
+          refreshToken: getRefreshToken()
+        });
+        
+        setAuthToken(data.accessToken);
+        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        
+        return axios(originalRequest);
+      } catch (refreshError) {
+        // Refresh failed, redirect to login
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
+```
+
+### Logging
+
+Log all requests and responses:
+
+<CodeGroup>
+```javascript Request logging
+axios.interceptors.request.use(
+  (config) => {
+    console.log(`[${config.method.toUpperCase()}] ${config.url}`);
+    console.log('Headers:', config.headers);
+    console.log('Data:', config.data);
+    return config;
+  }
+);
+```
+
+```javascript Response logging
+axios.interceptors.response.use(
+  (response) => {
+    console.log(`[${response.status}] ${response.config.url}`);
+    console.log('Data:', response.data);
+    return response;
+  },
+  (error) => {
+    if (error.response) {
+      console.error(`[${error.response.status}] ${error.config.url}`);
+      console.error('Error data:', error.response.data);
+    }
+    return Promise.reject(error);
+  }
+);
+```
+</CodeGroup>
+
+### Loading indicators
+
+Show and hide loading states:
+
+```javascript
+let activeRequests = 0;
+
+axios.interceptors.request.use(
+  (config) => {
+    activeRequests++;
+    if (activeRequests === 1) {
+      showLoadingSpinner();
+    }
+    return config;
+  },
+  (error) => {
+    activeRequests--;
+    if (activeRequests === 0) {
+      hideLoadingSpinner();
+    }
+    return Promise.reject(error);
+  }
+);
+
+axios.interceptors.response.use(
+  (response) => {
+    activeRequests--;
+    if (activeRequests === 0) {
+      hideLoadingSpinner();
+    }
+    return response;
+  },
+  (error) => {
+    activeRequests--;
+    if (activeRequests === 0) {
+      hideLoadingSpinner();
+    }
+    return Promise.reject(error);
+  }
+);
+```
+
+### Error handling
+
+Centralized error handling:
+
+```javascript
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      switch (error.response.status) {
+        case 401:
+          // Unauthorized - redirect to login
+          window.location.href = '/login';
+          break;
+        case 403:
+          // Forbidden
+          showNotification('You don\'t have permission to access this resource');
+          break;
+        case 404:
+          // Not found
+          showNotification('Resource not found');
+          break;
+        case 500:
+          // Server error
+          showNotification('Server error. Please try again later.');
+          break;
+        default:
+          showNotification('An error occurred');
+      }
+    } else if (error.request) {
+      // Network error
+      showNotification('Network error. Please check your connection.');
+    }
+    
+    return Promise.reject(error);
+  }
+);
+```
+
+## Removing interceptors
+
+You can remove an interceptor when you no longer need it:
+
+```javascript
+const instance = axios.create();
+
+// Add interceptor and store the ID
+const myInterceptor = instance.interceptors.request.use(
+  function (config) {
+    // Do something
+    return config;
+  }
+);
+
+// Remove interceptor
+instance.interceptors.request.eject(myInterceptor);
+```
+
+## Clearing all interceptors
+
+Remove all interceptors at once:
+
+```javascript
+const instance = axios.create();
+
+instance.interceptors.request.use(function () { /* ... */ });
+instance.interceptors.request.use(function () { /* ... */ });
+
+// Remove all request interceptors
+instance.interceptors.request.clear();
+
+instance.interceptors.response.use(function () { /* ... */ });
+instance.interceptors.response.use(function () { /* ... */ });
+
+// Remove all response interceptors
+instance.interceptors.response.clear();
+```
+
+## Execution order
+
+<Warning>
+Interceptors have different execution orders depending on their type!
+</Warning>
+
+**Request interceptors** are executed in **reverse order** (LIFO - Last In, First Out):
+- The **last** interceptor added is executed **first**
+
+**Response interceptors** are executed in the **order they were added** (FIFO - First In, First Out):
+- The **first** interceptor added is executed **first**
+
+### Example
+
+```javascript
+const instance = axios.create();
+
+const interceptor = (id) => (base) => {
+  console.log(id);
+  return base;
+};
+
+instance.interceptors.request.use(interceptor('Request Interceptor 1'));
+instance.interceptors.request.use(interceptor('Request Interceptor 2'));
+instance.interceptors.request.use(interceptor('Request Interceptor 3'));
+
+instance.interceptors.response.use(interceptor('Response Interceptor 1'));
+instance.interceptors.response.use(interceptor('Response Interceptor 2'));
+instance.interceptors.response.use(interceptor('Response Interceptor 3'));
+
+await instance.get('/data');
+
+// Console output:
+// Request Interceptor 3
+// Request Interceptor 2
+// Request Interceptor 1
+// [HTTP request is made]
+// Response Interceptor 1
+// Response Interceptor 2
+// Response Interceptor 3
+```
+
+## Advanced options
+
+### Synchronous interceptors
+
+By default, request interceptors are asynchronous. Use the `synchronous` option for synchronous execution:
+
+```javascript
+axios.interceptors.request.use(
+  function (config) {
+    config.headers.test = 'I am only a header!';
+    return config;
+  },
+  null,
+  { synchronous: true }
+);
+```
+
+This avoids delays in request execution when the main thread is blocked.
+
+### Conditional execution
+
+Execute an interceptor only when certain conditions are met:
+
+```javascript
+function onGetCall(config) {
+  return config.method === 'get';
+}
+
+axios.interceptors.request.use(
+  function (config) {
+    config.headers.test = 'special get headers';
+    return config;
+  },
+  null,
+  { runWhen: onGetCall }
+);
+```
+
+The interceptor will **not** execute if `runWhen` returns `false`.
+
+<Note>
+The options parameter (`synchronous` and `runWhen`) is only supported for request interceptors.
+</Note>
+
+## Multiple interceptors behavior
+
+When you add multiple response interceptors:
+
+- Each interceptor is executed in order
+- Only the **last interceptor's result** is returned
+- Every interceptor receives the result of its predecessor
+- If a fulfillment interceptor throws:
+  - The following fulfillment interceptor is **not called**
+  - The following rejection interceptor **is called**
+  - Once caught, the next fulfillment interceptor is called again
+
+```javascript
+axios.interceptors.response.use(
+  (response) => {
+    // Modify response
+    response.data.timestamp = Date.now();
+    return response;
+  }
+);
+
+axios.interceptors.response.use(
+  (response) => {
+    // This receives the modified response from above
+    console.log(response.data.timestamp); // Will log the timestamp
+    return response;
+  }
+);
+```
+
+## Instance-specific interceptors
+
+Each Axios instance has its own interceptor chain:
+
+```javascript
+const publicAPI = axios.create();
+const privateAPI = axios.create();
+
+// Only affects publicAPI
+publicAPI.interceptors.request.use((config) => {
+  console.log('Public API request');
+  return config;
+});
+
+// Only affects privateAPI
+privateAPI.interceptors.request.use((config) => {
+  config.headers.Authorization = `Bearer ${getToken()}`;
+  return config;
+});
+```
+
+## TypeScript support
+
+Axios provides TypeScript types for interceptors:
+
+```typescript
+import axios, { InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+
+axios.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    config.headers.set('X-Custom-Header', 'value');
+    return config;
+  },
+  (error: any) => Promise.reject(error)
+);
+
+axios.interceptors.response.use(
+  (response: AxiosResponse) => {
+    console.log(response.status);
+    return response;
+  },
+  (error: any) => Promise.reject(error)
+);
+```

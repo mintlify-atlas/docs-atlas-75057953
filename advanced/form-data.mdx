@@ -1,0 +1,504 @@
+---
+title: FormData and file uploads
+description: Learn how to send multipart/form-data, upload files, and automatically serialize objects to FormData in both browser and Node.js environments
+---
+
+Axios provides powerful support for working with `FormData` and multipart uploads, including automatic serialization of JavaScript objects to FormData format.
+
+## Sending FormData
+
+### Browser FormData
+
+In the browser, create a `FormData` instance and pass it directly to Axios:
+
+```javascript
+const formData = new FormData();
+formData.append('foo', 'bar');
+formData.append('username', 'john_doe');
+
+axios.post('https://httpbin.org/post', formData);
+// Content-Type is automatically set to multipart/form-data
+```
+
+### Node.js FormData
+
+In Node.js, use the [`form-data`](https://github.com/form-data/form-data) library:
+
+```javascript
+const FormData = require('form-data');
+const fs = require('fs');
+
+const form = new FormData();
+form.append('my_field', 'my value');
+form.append('my_buffer', Buffer.alloc(10));
+form.append('my_file', fs.createReadStream('/path/to/file.jpg'));
+
+axios.post('https://example.com', form);
+```
+
+<Note>
+Axios automatically sets the correct `Content-Type` header (including the boundary) when you pass a FormData instance.
+</Note>
+
+## Automatic serialization to FormData
+
+Starting from `v0.27.0`, Axios automatically serializes JavaScript objects to FormData when the `Content-Type` header is set to `multipart/form-data`.
+
+### Basic object serialization
+
+```javascript
+import axios from 'axios';
+
+axios.post('https://httpbin.org/post', 
+  { x: 1, name: 'John' },
+  {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }
+).then(({ data }) => console.log(data));
+```
+
+This is equivalent to:
+
+```javascript
+const formData = new FormData();
+formData.append('x', '1');
+formData.append('name', 'John');
+
+axios.post('https://httpbin.org/post', formData);
+```
+
+### Nested objects and arrays
+
+Axios handles complex data structures automatically:
+
+```javascript
+const obj = {
+  x: 1,
+  arr: [1, 2, 3],
+  arr2: [1, [2], 3],
+  users: [
+    { name: 'Peter', surname: 'Griffin' },
+    { name: 'Thomas', surname: 'Anderson' }
+  ]
+};
+
+axios.postForm('https://httpbin.org/post', obj);
+```
+
+This serializes to:
+
+```
+x: 1
+arr[]: 1
+arr[]: 2
+arr[]: 3
+arr2[0]: 1
+arr2[1][0]: 2
+arr2[2]: 3
+users[0][name]: Peter
+users[0][surname]: Griffin
+users[1][name]: Thomas
+users[1][surname]: Anderson
+```
+
+## Special serialization tokens
+
+Axios supports special endings to control serialization behavior:
+
+### JSON serialization with `{}`
+
+Use `{}` suffix to serialize a value as JSON:
+
+```javascript
+const data = {
+  'user{}': { name: 'John', age: 30 },
+  'metadata{}': [{ key: 'value' }]
+};
+
+axios.postForm('https://httpbin.org/post', data);
+
+// Results in:
+// user{}: '{"name":"John","age":30}'
+// metadata{}: '[{"key":"value"}]'
+```
+
+<Note>
+Your backend body-parser might automatically parse these JSON values if it recognizes the `{}` meta-token.
+</Note>
+
+### Array unwrapping with `[]`
+
+The `[]` suffix unwraps arrays as separate fields with the same key:
+
+```javascript
+const data = {
+  'tags[]': ['javascript', 'axios', 'http']
+};
+
+axios.postForm('https://httpbin.org/post', data);
+
+// Results in:
+// tags[]: javascript
+// tags[]: axios
+// tags[]: http
+```
+
+<Note>
+Arrays and FileList objects are automatically unwrapped by default, so the `[]` suffix is optional for these types.
+</Note>
+
+## Form serialization options
+
+Customize how objects are serialized to FormData using `formSerializer` options:
+
+<Accordion title="formSerializer configuration">
+  <ParamField path="visitor" type="function">
+    Custom visitor function to serialize data recursively.
+    
+    ```javascript
+    axios.postForm('/upload', data, {
+      formSerializer: {
+        visitor: (value, key, path, helpers) => {
+          if (value instanceof Date) {
+            return value.getTime();
+          }
+          return helpers.defaultVisitor.apply(this, arguments);
+        }
+      }
+    });
+    ```
+  </ParamField>
+  
+  <ParamField path="dots" type="boolean" default="false">
+    Use dot notation instead of brackets.
+    
+    ```javascript
+    axios.postForm('/upload', 
+      { user: { name: 'John' } },
+      { formSerializer: { dots: true } }
+    );
+    // Results in: user.name=John instead of user[name]=John
+    ```
+  </ParamField>
+  
+  <ParamField path="metaTokens" type="boolean" default="true">
+    Keep special endings like `{}` in parameter keys.
+    
+    ```javascript
+    axios.postForm('/upload', data, {
+      formSerializer: { metaTokens: true }
+    });
+    ```
+  </ParamField>
+  
+  <ParamField path="indexes" type="boolean | null" default="false">
+    Controls array index format:
+    - `null`: No brackets (`arr: 1, arr: 2, arr: 3`)
+    - `false`: Empty brackets (`arr[]: 1, arr[]: 2, arr[]: 3`)
+    - `true`: Indexed brackets (`arr[0]: 1, arr[1]: 2, arr[2]: 3`)
+    
+    ```javascript
+    axios.postForm('/upload', 
+      { items: [1, 2, 3] },
+      { formSerializer: { indexes: true } }
+    );
+    // Results in: items[0]=1, items[1]=2, items[2]=3
+    ```
+  </ParamField>
+</Accordion>
+
+## File uploads
+
+### Single file upload
+
+```javascript
+// Browser
+await axios.postForm('https://httpbin.org/post', {
+  myVar: 'foo',
+  file: document.querySelector('#fileInput').files[0]
+});
+
+// Node.js
+const fs = require('fs');
+
+await axios.postForm('https://httpbin.org/post', {
+  myVar: 'foo',
+  file: fs.createReadStream('./image.jpg')
+});
+```
+
+### Multiple file upload
+
+```javascript
+// Browser - from file input
+await axios.postForm('https://httpbin.org/post', {
+  'files[]': document.querySelector('#fileInput').files
+});
+
+// Browser - FileList directly
+await axios.postForm(
+  'https://httpbin.org/post',
+  document.querySelector('#fileInput').files
+);
+// All files sent with the same field name: files[]
+```
+
+### Upload with progress tracking
+
+```javascript
+const formData = new FormData();
+formData.append('file', fileInput.files[0]);
+
+axios.post('/upload', formData, {
+  onUploadProgress: (progressEvent) => {
+    const percentCompleted = Math.round(
+      (progressEvent.loaded * 100) / progressEvent.total
+    );
+    console.log(`Upload progress: ${percentCompleted}%`);
+  }
+}).then(response => {
+  console.log('Upload complete!');
+});
+```
+
+<Warning>
+Capturing FormData upload progress is not currently supported in Node.js environments.
+</Warning>
+
+## HTML form submission
+
+You can pass an HTML form element directly to Axios:
+
+```html
+<form id="myForm">
+  <input type="text" name="username" value="john_doe" />
+  <input type="email" name="email" value="john@example.com" />
+  <input type="file" name="avatar" />
+</form>
+```
+
+```javascript
+const form = document.querySelector('#myForm');
+
+// Submit as multipart/form-data
+await axios.postForm('https://httpbin.org/post', form);
+
+// Or submit as JSON
+await axios.post('https://httpbin.org/post', form, {
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+```
+
+### HTML form to JSON
+
+When submitting an HTML form as JSON, Axios intelligently converts it:
+
+```html
+<form id="form">
+  <input type="text" name="foo" value="1" />
+  <input type="text" name="deep.prop" value="2" />
+  <input type="text" name="baz" value="4" />
+  <input type="text" name="baz" value="5" />
+</form>
+```
+
+```javascript
+await axios.post('/submit', document.querySelector('#form'), {
+  headers: { 'Content-Type': 'application/json' }
+});
+
+// Submits as:
+// {
+//   "foo": "1",
+//   "deep": { "prop": "2" },
+//   "baz": ["4", "5"]
+// }
+```
+
+<Note>
+Sending Blobs/Files as JSON (base64) is not currently supported.
+</Note>
+
+## Shortcut methods
+
+Axios provides convenient shortcut methods that preset the Content-Type header:
+
+```javascript
+// These are equivalent:
+axios.postForm('/user', data);
+axios.post('/user', data, {
+  headers: { 'Content-Type': 'multipart/form-data' }
+});
+
+// Also available:
+axios.putForm('/user/123', data);
+axios.patchForm('/user/123', data);
+```
+
+## Node.js specific considerations
+
+### Custom FormData class
+
+You can override the FormData class used by Axios:
+
+```javascript
+const axios = require('axios');
+const FormData = require('form-data');
+
+axios.post('https://httpbin.org/post',
+  { x: 1, buf: Buffer.alloc(10) },
+  {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    env: { FormData }
+  }
+);
+```
+
+### Buffer upload
+
+```javascript
+const buffer = Buffer.alloc(1024);
+
+axios.postForm('https://httpbin.org/post', {
+  file: buffer,
+  filename: 'data.bin'
+});
+```
+
+## Complete upload example
+
+<Tabs>
+  <Tab title="Browser">
+    ```javascript
+    function uploadFile(file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', file.name);
+      formData.append('uploadedBy', 'john_doe');
+
+      return axios.post('/api/upload', formData, {
+        onUploadProgress: (progressEvent) => {
+          const progress = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          updateProgressBar(progress);
+        }
+      });
+    }
+
+    // Usage
+    const fileInput = document.querySelector('#fileInput');
+    fileInput.addEventListener('change', (e) => {
+      uploadFile(e.target.files[0])
+        .then(response => {
+          console.log('Upload successful:', response.data);
+        })
+        .catch(error => {
+          console.error('Upload failed:', error);
+        });
+    });
+    ```
+  </Tab>
+  
+  <Tab title="Node.js">
+    ```javascript
+    const fs = require('fs');
+    const FormData = require('form-data');
+    const axios = require('axios');
+
+    async function uploadFile(filePath) {
+      const form = new FormData();
+      form.append('file', fs.createReadStream(filePath));
+      form.append('title', path.basename(filePath));
+      form.append('uploadedBy', 'server');
+
+      const response = await axios.post(
+        'https://example.com/upload',
+        form,
+        {
+          headers: form.getHeaders(),
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity
+        }
+      );
+
+      return response.data;
+    }
+
+    // Usage
+    uploadFile('./large-file.zip')
+      .then(data => {
+        console.log('Upload successful:', data);
+      })
+      .catch(error => {
+        console.error('Upload failed:', error);
+      });
+    ```
+  </Tab>
+  
+  <Tab title="React Hook">
+    ```javascript
+    import { useState } from 'react';
+    import axios from 'axios';
+
+    function useFileUpload() {
+      const [progress, setProgress] = useState(0);
+      const [uploading, setUploading] = useState(false);
+      const [error, setError] = useState(null);
+
+      const upload = async (file, metadata = {}) => {
+        setUploading(true);
+        setProgress(0);
+        setError(null);
+
+        try {
+          const response = await axios.postForm(
+            '/api/upload',
+            { file, ...metadata },
+            {
+              onUploadProgress: (progressEvent) => {
+                const percentCompleted = Math.round(
+                  (progressEvent.loaded * 100) / progressEvent.total
+                );
+                setProgress(percentCompleted);
+              }
+            }
+          );
+
+          setUploading(false);
+          return response.data;
+        } catch (err) {
+          setError(err);
+          setUploading(false);
+          throw err;
+        }
+      };
+
+      return { upload, progress, uploading, error };
+    }
+
+    // Usage in component
+    function FileUploader() {
+      const { upload, progress, uploading } = useFileUpload();
+
+      const handleFileChange = async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          await upload(file, { title: file.name });
+        }
+      };
+
+      return (
+        <div>
+          <input type="file" onChange={handleFileChange} disabled={uploading} />
+          {uploading && <progress value={progress} max="100" />}
+        </div>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>

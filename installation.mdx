@@ -1,0 +1,141 @@
+---
+title: Installation
+description: Install Axios using npm, yarn, pnpm, bun, or include it via CDN
+---
+
+# Installation
+
+Axios can be installed using your preferred package manager or included directly in your HTML via CDN.
+
+## Package manager
+
+Choose your preferred package manager to install Axios:
+
+<CodeGroup>
+
+```bash npm
+npm install axios
+```
+
+```bash yarn
+yarn add axios
+```
+
+```bash pnpm
+pnpm add axios
+```
+
+```bash bun
+bun add axios
+```
+
+</CodeGroup>
+
+<Note>
+  The current stable version is **1.13.6**. Axios follows semantic versioning.
+</Note>
+
+## CDN
+
+For quick prototyping or if you prefer not to use a build system, you can include Axios directly from a CDN:
+
+<CodeGroup>
+
+```html jsDelivr
+<script src="https://cdn.jsdelivr.net/npm/axios@1.13.2/dist/axios.min.js"></script>
+```
+
+```html unpkg
+<script src="https://unpkg.com/axios@1.13.2/dist/axios.min.js"></script>
+```
+
+</CodeGroup>
+
+When using the CDN version, Axios is available as a global `axios` object.
+
+## Importing Axios
+
+Once installed, you can import Axios in your JavaScript files:
+
+### ES6 modules (recommended)
+
+<CodeGroup>
+
+```javascript Default import
+import axios from 'axios';
+```
+
+```javascript Named imports
+import axios, { isCancel, AxiosError } from 'axios';
+```
+
+```javascript Alternative syntax
+import { default as axios } from 'axios';
+```
+
+</CodeGroup>
+
+### CommonJS
+
+If you're using CommonJS (Node.js with `require`):
+
+```javascript
+const axios = require('axios');
+```
+
+<Note>
+  When using `require`, only the default export is available. All Axios utilities are accessible as properties of the default export.
+</Note>
+
+### TypeScript
+
+Axios includes TypeScript definitions out of the box:
+
+```typescript
+import axios, { AxiosResponse, AxiosError } from 'axios';
+
+// Full type safety
+interface User {
+  id: number;
+  name: string;
+}
+
+const response: AxiosResponse<User> = await axios.get('/user/1');
+```
+
+## Direct bundle imports
+
+For custom or legacy environments, you can import the bundle directly:
+
+<CodeGroup>
+
+```javascript Browser (CommonJS)
+const axios = require('axios/dist/browser/axios.cjs');
+```
+
+```javascript Node.js (CommonJS)
+const axios = require('axios/dist/node/axios.cjs');
+```
+
+</CodeGroup>
+
+<Warning>
+  Direct bundle imports should only be used when the standard import methods don't work in your environment. The default import method is recommended for most use cases.
+</Warning>
+
+## Verifying installation
+
+After installation, verify that Axios is working:
+
+```javascript
+import axios from 'axios';
+
+console.log(axios.VERSION); // Outputs the installed version
+console.log(axios.isCancel('test')); // false
+```
+
+## Next steps
+
+<Card title="Quick start guide" icon="rocket" href="/quickstart">
+  Learn how to make your first HTTP requests with Axios
+</Card>

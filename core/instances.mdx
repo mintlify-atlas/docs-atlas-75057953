@@ -1,0 +1,359 @@
+---
+title: Creating instances
+description: Create custom Axios instances with their own configuration and defaults
+---
+
+Axios instances allow you to create multiple HTTP clients with different configurations, perfect for applications that interact with multiple APIs or require different settings for different endpoints.
+
+## Creating an instance
+
+Use `axios.create()` to create a new instance with a custom configuration:
+
+```javascript
+import axios from 'axios';
+
+const instance = axios.create({
+  baseURL: 'https://some-domain.com/api/',
+  timeout: 1000,
+  headers: { 'X-Custom-Header': 'foobar' }
+});
+```
+
+## Instance methods
+
+Axios instances have the same methods as the default Axios export. The configuration you provide will be merged with the instance config.
+
+<Tabs>
+  <Tab title="Request methods">
+    All standard HTTP methods are available:
+    ```javascript
+    instance.request(config)
+    instance.get(url[, config])
+    instance.delete(url[, config])
+    instance.head(url[, config])
+    instance.options(url[, config])
+    instance.post(url[, data[, config]])
+    instance.put(url[, data[, config]])
+    instance.patch(url[, data[, config]])
+    ```
+  </Tab>
+  
+  <Tab title="Form methods">
+    Shortcut methods for form data:
+    ```javascript
+    instance.postForm(url[, data[, config]])
+    instance.putForm(url[, data[, config]])
+    instance.patchForm(url[, data[, config]])
+    ```
+  </Tab>
+  
+  <Tab title="Utility methods">
+    Helper methods:
+    ```javascript
+    instance.getUri([config]) // Generate URI without making request
+    ```
+  </Tab>
+</Tabs>
+
+## Why use instances?
+
+Instances provide several benefits:
+
+### 1. Multiple API endpoints
+
+Create separate instances for different services:
+
+```javascript
+// Your main API
+const api = axios.create({
+  baseURL: 'https://api.yourapp.com/v1',
+  timeout: 5000
+});
+
+// Authentication service
+const authAPI = axios.create({
+  baseURL: 'https://auth.yourapp.com',
+  timeout: 10000
+});
+
+// Third-party service
+const thirdPartyAPI = axios.create({
+  baseURL: 'https://external-api.com',
+  headers: { 'X-API-Key': process.env.THIRD_PARTY_KEY }
+});
+```
+
+### 2. Environment-specific configuration
+
+Configure different settings based on environment:
+
+```javascript
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+const api = axios.create({
+  baseURL: isDevelopment 
+    ? 'http://localhost:3000/api'
+    : 'https://api.production.com',
+  timeout: isDevelopment ? 30000 : 10000,
+  headers: {
+    'X-Environment': isDevelopment ? 'dev' : 'prod'
+  }
+});
+```
+
+### 3. Isolated interceptors
+
+Each instance has its own interceptor chain:
+
+```javascript
+const publicAPI = axios.create({
+  baseURL: 'https://api.example.com/public'
+});
+
+const privateAPI = axios.create({
+  baseURL: 'https://api.example.com/private'
+});
+
+// Only privateAPI requests will have the auth token
+privateAPI.interceptors.request.use(config => {
+  config.headers.Authorization = `Bearer ${getToken()}`;
+  return config;
+});
+```
+
+## Practical examples
+
+### REST API client
+
+Create a reusable API client:
+
+```javascript
+class APIClient {
+  constructor(baseURL, options = {}) {
+    this.client = axios.create({
+      baseURL,
+      timeout: 10000,
+      ...options
+    });
+    
+    this.setupInterceptors();
+  }
+  
+  setupInterceptors() {
+    // Add request interceptor
+    this.client.interceptors.request.use(
+      config => {
+        // Add auth token to every request
+        const token = localStorage.getItem('token');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      error => Promise.reject(error)
+    );
+  }
+  
+  // Convenience methods
+  get(url, config) {
+    return this.client.get(url, config);
+  }
+  
+  post(url, data, config) {
+    return this.client.post(url, data, config);
+  }
+  
+  put(url, data, config) {
+    return this.client.put(url, data, config);
+  }
+  
+  delete(url, config) {
+    return this.client.delete(url, config);
+  }
+}
+
+// Usage
+const api = new APIClient('https://api.example.com/v1');
+await api.get('/users');
+```
+
+### Service-specific clients
+
+Organize your API calls by service:
+
+```javascript
+// services/userService.js
+const userAPI = axios.create({
+  baseURL: 'https://api.example.com/users'
+});
+
+export const userService = {
+  getAll: () => userAPI.get('/'),
+  getById: (id) => userAPI.get(`/${id}`),
+  create: (data) => userAPI.post('/', data),
+  update: (id, data) => userAPI.put(`/${id}`, data),
+  delete: (id) => userAPI.delete(`/${id}`)
+};
+
+// services/postService.js
+const postAPI = axios.create({
+  baseURL: 'https://api.example.com/posts'
+});
+
+export const postService = {
+  getAll: () => postAPI.get('/'),
+  getById: (id) => postAPI.get(`/${id}`),
+  create: (data) => postAPI.post('/', data),
+  update: (id, data) => postAPI.put(`/${id}`, data),
+  delete: (id) => postAPI.delete(`/${id}`)
+};
+```
+
+### Microservices architecture
+
+```javascript
+const services = {
+  auth: axios.create({
+    baseURL: 'https://auth.example.com',
+    timeout: 5000
+  }),
+  
+  users: axios.create({
+    baseURL: 'https://users.example.com',
+    timeout: 5000
+  }),
+  
+  orders: axios.create({
+    baseURL: 'https://orders.example.com',
+    timeout: 10000
+  }),
+  
+  analytics: axios.create({
+    baseURL: 'https://analytics.example.com',
+    timeout: 15000
+  })
+};
+
+// Add auth token to all services except auth
+Object.entries(services).forEach(([name, instance]) => {
+  if (name !== 'auth') {
+    instance.interceptors.request.use(config => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    });
+  }
+});
+
+export default services;
+```
+
+### Custom adapter configuration
+
+```javascript
+// Use fetch adapter for a specific instance
+const fetchInstance = axios.create({
+  baseURL: 'https://api.example.com',
+  adapter: 'fetch'
+});
+
+// Use specific adapters in order of preference
+const hybridInstance = axios.create({
+  baseURL: 'https://api.example.com',
+  adapter: ['xhr', 'http', 'fetch']
+});
+```
+
+### Testing-friendly instances
+
+Create instances that can be easily mocked:
+
+```javascript
+// api.js
+export const createAPIClient = (config = {}) => {
+  return axios.create({
+    baseURL: config.baseURL || 'https://api.example.com',
+    timeout: config.timeout || 5000,
+    ...config
+  });
+};
+
+export const api = createAPIClient();
+
+// api.test.js
+import { createAPIClient } from './api';
+import MockAdapter from 'axios-mock-adapter';
+
+const mockAPI = createAPIClient({ baseURL: 'http://localhost' });
+const mock = new MockAdapter(mockAPI);
+
+mock.onGet('/users').reply(200, { users: [] });
+```
+
+## Instance configuration
+
+All configuration options available to `axios.create()` are the same as those for individual requests. See the [config defaults](/core/config-defaults) documentation for all available options.
+
+## Modifying instance defaults
+
+You can modify an instance's defaults after creation:
+
+```javascript
+const instance = axios.create({
+  baseURL: 'https://api.example.com'
+});
+
+// Modify defaults later
+instance.defaults.timeout = 5000;
+instance.defaults.headers.common['Authorization'] = 'Bearer token';
+instance.defaults.headers.post['Content-Type'] = 'application/json';
+```
+
+## TypeScript support
+
+Axios provides full TypeScript support for instances:
+
+```typescript
+import axios, { AxiosInstance, CreateAxiosDefaults } from 'axios';
+
+const config: CreateAxiosDefaults = {
+  baseURL: 'https://api.example.com',
+  timeout: 10000
+};
+
+const instance: AxiosInstance = axios.create(config);
+
+// Type-safe requests
+interface User {
+  id: number;
+  name: string;
+}
+
+const { data } = await instance.get<User>('/user/123');
+console.log(data.name); // TypeScript knows this is a string
+```
+
+## getUri method
+
+Generate the final URL without making a request:
+
+```javascript
+const instance = axios.create({
+  baseURL: 'https://api.example.com'
+});
+
+const uri = instance.getUri({
+  url: '/users',
+  params: { page: 1, limit: 10 }
+});
+
+console.log(uri);
+// https://api.example.com/users?page=1&limit=10
+```
+
+This is useful for:
+- Debugging URLs before making requests
+- Generating URLs for use in other contexts (like webhooks)
+- Testing URL construction logic

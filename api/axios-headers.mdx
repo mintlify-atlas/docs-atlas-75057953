@@ -1,0 +1,472 @@
+---
+title: AxiosHeaders class
+description: Headers management class with case-insensitive operations and convenient accessor methods.
+---
+
+The `AxiosHeaders` class provides a robust way to manage HTTP headers with case-insensitive operations, convenient accessor methods, and support for various header formats.
+
+## Constructor
+
+<ParamField path="headers" type="RawAxiosHeaders | AxiosHeaders | string" optional>
+  Initial headers to set. Can be an object, another AxiosHeaders instance, or a string in HTTP header format.
+</ParamField>
+
+```javascript
+import { AxiosHeaders } from 'axios';
+
+// From object
+const headers = new AxiosHeaders({
+  'Content-Type': 'application/json',
+  'Authorization': 'Bearer token'
+});
+
+// From string
+const headers2 = new AxiosHeaders(
+  'Content-Type: application/json\nAuthorization: Bearer token'
+);
+
+// From another AxiosHeaders instance
+const headers3 = new AxiosHeaders(headers);
+```
+
+## Methods
+
+### set()
+
+Set one or more headers.
+
+**Signature 1: Set a single header**
+
+<ParamField path="headerName" type="string" required>
+  The header name.
+</ParamField>
+
+<ParamField path="value" type="AxiosHeaderValue" required>
+  The header value.
+</ParamField>
+
+<ParamField path="rewrite" type="boolean | AxiosHeaderMatcher" optional>
+  Whether to overwrite existing header, or a matcher to conditionally overwrite.
+</ParamField>
+
+**Signature 2: Set multiple headers**
+
+<ParamField path="headers" type="RawAxiosHeaders | AxiosHeaders | string" required>
+  Object, AxiosHeaders instance, or string containing headers to set.
+</ParamField>
+
+<ParamField path="rewrite" type="boolean" optional>
+  Whether to overwrite existing headers.
+</ParamField>
+
+<ParamField path="returns" type="AxiosHeaders">
+  Returns the AxiosHeaders instance for chaining.
+</ParamField>
+
+```javascript
+const headers = new AxiosHeaders();
+
+// Set single header
+headers.set('Content-Type', 'application/json');
+
+// Set multiple headers
+headers.set({
+  'Authorization': 'Bearer token',
+  'X-Custom-Header': 'value'
+});
+
+// Conditional rewrite
+headers.set('Content-Type', 'text/html', false); // Won't overwrite
+headers.set('Content-Type', 'text/html', true);  // Will overwrite
+
+// Method chaining
+headers
+  .set('Content-Type', 'application/json')
+  .set('Accept', 'application/json');
+```
+
+### get()
+
+Get a header value.
+
+<ParamField path="headerName" type="string" required>
+  The header name (case-insensitive).
+</ParamField>
+
+<ParamField path="parser" type="RegExp | true | AxiosHeaderParser" optional>
+  Optional parser: `RegExp` to exec, `true` to parse tokens, or a custom parser function.
+</ParamField>
+
+<ParamField path="returns" type="AxiosHeaderValue | RegExpExecArray | null">
+  The header value, parsed result, or null if not found.
+</ParamField>
+
+```javascript
+const headers = new AxiosHeaders({
+  'Content-Type': 'application/json; charset=utf-8',
+  'Authorization': 'Bearer abc123'
+});
+
+// Simple get
+const contentType = headers.get('content-type');
+console.log(contentType); // 'application/json; charset=utf-8'
+
+// Parse as tokens
+const parsed = headers.get('content-type', true);
+console.log(parsed); // { 'application/json': undefined, charset: 'utf-8' }
+
+// RegExp parsing
+const match = headers.get('authorization', /Bearer (.+)/);
+console.log(match[1]); // 'abc123'
+
+// Custom parser
+const token = headers.get('authorization', (value) => value.split(' ')[1]);
+console.log(token); // 'abc123'
+```
+
+### has()
+
+Check if a header exists.
+
+<ParamField path="header" type="string" required>
+  The header name (case-insensitive).
+</ParamField>
+
+<ParamField path="matcher" type="AxiosHeaderMatcher" optional>
+  Optional matcher to test the header value.
+</ParamField>
+
+<ParamField path="returns" type="boolean">
+  Returns `true` if the header exists and matches the criteria.
+</ParamField>
+
+```javascript
+const headers = new AxiosHeaders({
+  'Content-Type': 'application/json',
+  'Authorization': 'Bearer token123'
+});
+
+// Simple existence check
+headers.has('Content-Type'); // true
+headers.has('X-Custom'); // false
+
+// With string matcher
+headers.has('Content-Type', 'json'); // true
+headers.has('Content-Type', 'xml'); // false
+
+// With RegExp matcher
+headers.has('Authorization', /^Bearer/); // true
+
+// With function matcher
+headers.has('Content-Type', (value) => value.includes('json')); // true
+```
+
+### delete()
+
+Delete one or more headers.
+
+<ParamField path="header" type="string | string[]" required>
+  The header name(s) to delete.
+</ParamField>
+
+<ParamField path="matcher" type="AxiosHeaderMatcher" optional>
+  Optional matcher to conditionally delete.
+</ParamField>
+
+<ParamField path="returns" type="boolean">
+  Returns `true` if any headers were deleted.
+</ParamField>
+
+```javascript
+const headers = new AxiosHeaders({
+  'Content-Type': 'application/json',
+  'Authorization': 'Bearer token',
+  'X-Custom': 'value'
+});
+
+// Delete single header
+headers.delete('Content-Type'); // true
+
+// Delete multiple headers
+headers.delete(['Authorization', 'X-Custom']); // true
+
+// Conditional delete
+headers.delete('Authorization', /^Bearer/); // true
+```
+
+### clear()
+
+Clear all headers, optionally matching a condition.
+
+<ParamField path="matcher" type="AxiosHeaderMatcher" optional>
+  Optional matcher to selectively clear headers.
+</ParamField>
+
+<ParamField path="returns" type="boolean">
+  Returns `true` if any headers were cleared.
+</ParamField>
+
+```javascript
+const headers = new AxiosHeaders({
+  'Content-Type': 'application/json',
+  'Authorization': 'Bearer token',
+  'X-Custom-1': 'value1',
+  'X-Custom-2': 'value2'
+});
+
+// Clear all headers starting with 'X-'
+headers.clear((value, name) => name.startsWith('X-')); // true
+
+// Clear all headers
+headers.clear(); // true
+```
+
+### normalize()
+
+Normalize header names to proper case format.
+
+<ParamField path="format" type="boolean" required>
+  Whether to format header names (e.g., 'content-type' → 'Content-Type').
+</ParamField>
+
+<ParamField path="returns" type="AxiosHeaders">
+  Returns the AxiosHeaders instance for chaining.
+</ParamField>
+
+```javascript
+const headers = new AxiosHeaders({
+  'content-type': 'application/json',
+  'AUTHORIZATION': 'Bearer token'
+});
+
+headers.normalize(true);
+// Headers are now: { 'Content-Type': '...', 'Authorization': '...' }
+```
+
+### concat()
+
+Concatenate additional headers.
+
+<ParamField path="...targets" type="Array<AxiosHeaders | RawAxiosHeaders | string | undefined | null>" required>
+  One or more headers objects to concatenate.
+</ParamField>
+
+<ParamField path="returns" type="AxiosHeaders">
+  A new AxiosHeaders instance with concatenated headers.
+</ParamField>
+
+```javascript
+const headers1 = new AxiosHeaders({ 'Content-Type': 'application/json' });
+const headers2 = { 'Authorization': 'Bearer token' };
+const headers3 = 'X-Custom: value';
+
+const combined = headers1.concat(headers2, headers3);
+// combined contains all headers from headers1, headers2, and headers3
+```
+
+### toJSON()
+
+Convert headers to a plain object.
+
+<ParamField path="asStrings" type="boolean" optional>
+  Whether to convert array values to comma-separated strings.
+</ParamField>
+
+<ParamField path="returns" type="RawAxiosHeaders">
+  Plain object representation of headers.
+</ParamField>
+
+```javascript
+const headers = new AxiosHeaders({
+  'Content-Type': 'application/json',
+  'Accept': ['application/json', 'text/plain']
+});
+
+const obj1 = headers.toJSON();
+// { 'Content-Type': 'application/json', 'Accept': ['application/json', 'text/plain'] }
+
+const obj2 = headers.toJSON(true);
+// { 'Content-Type': 'application/json', 'Accept': 'application/json, text/plain' }
+```
+
+## Convenience methods
+
+AxiosHeaders provides convenience methods for common headers:
+
+### setContentType() / getContentType() / hasContentType()
+
+```javascript
+headers.setContentType('application/json');
+const type = headers.getContentType();
+const hasJson = headers.hasContentType('json'); // true
+```
+
+### setContentLength() / getContentLength() / hasContentLength()
+
+```javascript
+headers.setContentLength(1024);
+const length = headers.getContentLength();
+const hasLength = headers.hasContentLength(); // true
+```
+
+### setAccept() / getAccept() / hasAccept()
+
+```javascript
+headers.setAccept('application/json');
+const accept = headers.getAccept();
+const hasJson = headers.hasAccept('json'); // true
+```
+
+### setUserAgent() / getUserAgent() / hasUserAgent()
+
+```javascript
+headers.setUserAgent('MyApp/1.0');
+const ua = headers.getUserAgent();
+const hasUA = headers.hasUserAgent(); // true
+```
+
+### setContentEncoding() / getContentEncoding() / hasContentEncoding()
+
+```javascript
+headers.setContentEncoding('gzip');
+const encoding = headers.getContentEncoding();
+const hasGzip = headers.hasContentEncoding('gzip'); // true
+```
+
+### setAuthorization() / getAuthorization() / hasAuthorization()
+
+```javascript
+headers.setAuthorization('Bearer token123');
+const auth = headers.getAuthorization();
+const hasAuth = headers.hasAuthorization(); // true
+```
+
+### getSetCookie()
+
+Get the Set-Cookie header as an array.
+
+```javascript
+const cookies = headers.getSetCookie();
+console.log(cookies); // ['session=abc123', 'tracking=xyz789']
+```
+
+## Static methods
+
+### from()
+
+Create an AxiosHeaders instance from various input types.
+
+<ParamField path="thing" type="AxiosHeaders | RawAxiosHeaders | string" optional>
+  The source to create headers from.
+</ParamField>
+
+<ParamField path="returns" type="AxiosHeaders">
+  A new or existing AxiosHeaders instance.
+</ParamField>
+
+```javascript
+// Returns the same instance if already AxiosHeaders
+const headers1 = new AxiosHeaders();
+const headers2 = AxiosHeaders.from(headers1); // Same instance
+
+// Creates new instance from object
+const headers3 = AxiosHeaders.from({ 'Content-Type': 'application/json' });
+```
+
+### concat()
+
+Concatenate multiple headers into a new instance.
+
+<ParamField path="...targets" type="Array<AxiosHeaders | RawAxiosHeaders | string | undefined | null>" required>
+  Headers to concatenate.
+</ParamField>
+
+<ParamField path="returns" type="AxiosHeaders">
+  A new AxiosHeaders instance.
+</ParamField>
+
+```javascript
+const combined = AxiosHeaders.concat(
+  { 'Content-Type': 'application/json' },
+  { 'Authorization': 'Bearer token' },
+  'X-Custom: value'
+);
+```
+
+### accessor()
+
+Define accessor methods for custom headers.
+
+<ParamField path="header" type="string | string[]" required>
+  Header name(s) to create accessors for.
+</ParamField>
+
+<ParamField path="returns" type="typeof AxiosHeaders">
+  Returns the AxiosHeaders class for chaining.
+</ParamField>
+
+```javascript
+// Creates setCustomHeader(), getCustomHeader(), hasCustomHeader()
+AxiosHeaders.accessor('Custom-Header');
+
+const headers = new AxiosHeaders();
+headers.setCustomHeader('value');
+const value = headers.getCustomHeader();
+const has = headers.hasCustomHeader();
+```
+
+## Usage examples
+
+### Building request headers
+
+```javascript
+import { AxiosHeaders } from 'axios';
+
+const headers = new AxiosHeaders()
+  .setContentType('application/json')
+  .setAuthorization('Bearer ' + token)
+  .set('X-Request-ID', uuid());
+
+axios.get('/api/data', { headers });
+```
+
+### Merging headers
+
+```javascript
+const defaultHeaders = new AxiosHeaders({
+  'Content-Type': 'application/json',
+  'Accept': 'application/json'
+});
+
+const requestHeaders = defaultHeaders.concat({
+  'Authorization': 'Bearer token',
+  'X-Request-ID': '123'
+});
+```
+
+### Conditional header operations
+
+```javascript
+const headers = new AxiosHeaders();
+
+// Only set if not already present
+if (!headers.has('Content-Type')) {
+  headers.setContentType('application/json');
+}
+
+// Remove all custom headers
+headers.clear((value, name) => name.startsWith('X-'));
+```
+
+### Iterating over headers
+
+```javascript
+const headers = new AxiosHeaders({
+  'Content-Type': 'application/json',
+  'Authorization': 'Bearer token'
+});
+
+for (const [name, value] of headers) {
+  console.log(`${name}: ${value}`);
+}
+```

@@ -1,0 +1,515 @@
+---
+title: Request configuration
+description: Complete reference for all Axios request configuration options including headers, timeouts, authentication, proxies, and more
+---
+
+Axios provides extensive configuration options for customizing requests. Only the `url` field is required; all other options have sensible defaults.
+
+## Basic options
+
+These are the most commonly used configuration options:
+
+<ParamField path="url" type="string" required>
+  The server URL that will be used for the request.
+  
+  ```javascript
+  axios({ url: '/user/12345' })
+  ```
+</ParamField>
+
+<ParamField path="method" type="string" default="get">
+  The request method to use. Supports: `get`, `post`, `put`, `patch`, `delete`, `head`, `options`, `purge`, `link`, `unlink`.
+  
+  ```javascript
+  axios({ method: 'post', url: '/user' })
+  ```
+</ParamField>
+
+<ParamField path="baseURL" type="string">
+  Prepended to `url` unless `url` is absolute (and `allowAbsoluteUrls` is true).
+  
+  ```javascript
+  const instance = axios.create({
+    baseURL: 'https://api.example.com'
+  });
+  
+  instance.get('/user/12345'); // https://api.example.com/user/12345
+  ```
+</ParamField>
+
+<ParamField path="allowAbsoluteUrls" type="boolean" default="true">
+  Determines whether absolute URLs override `baseURL`. When `false`, absolute URLs are always prepended by `baseURL`.
+</ParamField>
+
+<ParamField path="data" type="any">
+  The data to send as the request body. Only applicable for `PUT`, `POST`, `PATCH`, and `DELETE` methods.
+  
+  Supported types:
+  - `string`, plain object, `ArrayBuffer`, `ArrayBufferView`, `URLSearchParams`
+  - Browser: `FormData`, `File`, `Blob`
+  - Node.js: `Stream`, `Buffer`, `FormData`
+  
+  ```javascript
+  axios.post('/user', {
+    firstName: 'Fred',
+    lastName: 'Flintstone'
+  })
+  ```
+</ParamField>
+
+<ParamField path="params" type="object">
+  URL parameters to be sent with the request. Must be a plain object or `URLSearchParams`.
+  
+  ```javascript
+  axios.get('/user', {
+    params: { ID: 12345 }
+  })
+  // Request to /user?ID=12345
+  ```
+</ParamField>
+
+<ParamField path="headers" type="object">
+  Custom headers to be sent with the request.
+  
+  ```javascript
+  axios.get('/user', {
+    headers: { 'X-Custom-Header': 'foobar' }
+  })
+  ```
+</ParamField>
+
+## Timeout and retries
+
+<ParamField path="timeout" type="number" default="0">
+  Number of milliseconds before the request times out. `0` means no timeout.
+  
+  ```javascript
+  axios.get('/user', {
+    timeout: 5000 // 5 seconds
+  })
+  ```
+</ParamField>
+
+<ParamField path="timeoutErrorMessage" type="string">
+  Custom error message when the request times out.
+  
+  ```javascript
+  axios.get('/user', {
+    timeout: 5000,
+    timeoutErrorMessage: 'Request took too long'
+  })
+  ```
+</ParamField>
+
+<ParamField path="maxRedirects" type="number" default="21">
+  Maximum number of redirects to follow in Node.js. Set to `0` to disable redirects.
+</ParamField>
+
+## Response handling
+
+<ParamField path="responseType" type="string" default="json">
+  Indicates the type of data the server will respond with.
+  
+  Options: `arraybuffer`, `blob`, `document`, `json`, `text`, `stream`, `formdata`
+  
+  ```javascript
+  axios.get('/image.jpg', {
+    responseType: 'arraybuffer'
+  })
+  ```
+</ParamField>
+
+<ParamField path="responseEncoding" type="string" default="utf8">
+  Encoding to use for decoding responses (Node.js only). Ignored for `responseType` of `stream` or client-side requests.
+  
+  Options: `utf8`, `ascii`, `latin1`, `base64`, `hex`, `binary`, etc.
+</ParamField>
+
+<ParamField path="validateStatus" type="function">
+  Defines whether to resolve or reject the promise for a given HTTP response status code.
+  
+  ```javascript
+  axios.get('/user', {
+    validateStatus: function (status) {
+      return status < 500; // Resolve for status codes less than 500
+    }
+  })
+  ```
+</ParamField>
+
+<ParamField path="maxContentLength" type="number">
+  Maximum size of the HTTP response content in bytes (Node.js only).
+  
+  ```javascript
+  axios.get('/file', {
+    maxContentLength: 2000
+  })
+  ```
+</ParamField>
+
+<ParamField path="maxBodyLength" type="number">
+  Maximum size of the HTTP request content in bytes (Node.js only).
+  
+  ```javascript
+  axios.post('/upload', data, {
+    maxBodyLength: 10000000 // 10MB
+  })
+  ```
+</ParamField>
+
+## Request transformation
+
+<ParamField path="transformRequest" type="function | function[]">
+  Allows changes to the request data before it's sent to the server. Only applicable for `PUT`, `POST`, `PATCH`, and `DELETE` methods.
+  
+  ```javascript
+  axios.post('/user', data, {
+    transformRequest: [function (data, headers) {
+      // Transform the data
+      return JSON.stringify(data);
+    }]
+  })
+  ```
+</ParamField>
+
+<ParamField path="transformResponse" type="function | function[]">
+  Allows changes to the response data before it's passed to `then`/`catch`.
+  
+  ```javascript
+  axios.get('/user', {
+    transformResponse: [function (data) {
+      // Transform the response data
+      return JSON.parse(data);
+    }]
+  })
+  ```
+</ParamField>
+
+## Authentication
+
+<ParamField path="auth" type="object">
+  HTTP Basic authentication credentials. Sets an `Authorization` header, overwriting any existing `Authorization` custom headers.
+  
+  ```javascript
+  axios.get('/user', {
+    auth: {
+      username: 'janedoe',
+      password: 's00pers3cret'
+    }
+  })
+  ```
+</ParamField>
+
+<ParamField path="withCredentials" type="boolean" default="false">
+  Indicates whether cross-site Access-Control requests should be made using credentials (cookies, authorization headers, TLS client certificates).
+  
+  ```javascript
+  axios.get('https://api.example.com/data', {
+    withCredentials: true
+  })
+  ```
+</ParamField>
+
+## XSRF protection
+
+<ParamField path="xsrfCookieName" type="string" default="XSRF-TOKEN">
+  The name of the cookie to use as a value for the XSRF token.
+</ParamField>
+
+<ParamField path="xsrfHeaderName" type="string" default="X-XSRF-TOKEN">
+  The name of the HTTP header that carries the XSRF token value.
+</ParamField>
+
+<ParamField path="withXSRFToken" type="boolean | function">
+  Controls whether Axios reads the XSRF cookie and sets the XSRF header.
+  
+  - `undefined` (default): XSRF header is set only for same-origin requests
+  - `true`: Attempt to set the XSRF header for all requests (including cross-origin)
+  - `false`: Never set the XSRF header
+  - `function`: Callback that receives the request config and returns `true`, `false`, or `undefined`
+  
+  ```javascript
+  axios.get('/user', {
+    withCredentials: true,
+    withXSRFToken: true
+  })
+  ```
+</ParamField>
+
+## Progress tracking
+
+<ParamField path="onUploadProgress" type="function">
+  Callback for upload progress events.
+  
+  ```javascript
+  axios.post('/upload', formData, {
+    onUploadProgress: function (progressEvent) {
+      const percentCompleted = Math.round(
+        (progressEvent.loaded * 100) / progressEvent.total
+      );
+      console.log(`Upload: ${percentCompleted}%`);
+    }
+  })
+  ```
+  
+  Progress event properties:
+  - `loaded`: Bytes transferred
+  - `total`: Total bytes to transfer
+  - `progress`: Progress as a decimal (0-1)
+  - `bytes`: Bytes transferred since last trigger (delta)
+  - `rate`: Transfer speed in bytes/second
+  - `estimated`: Estimated time remaining in seconds
+  - `upload`: `true` for upload events
+</ParamField>
+
+<ParamField path="onDownloadProgress" type="function">
+  Callback for download progress events.
+  
+  ```javascript
+  axios.get('/file', {
+    onDownloadProgress: function (progressEvent) {
+      console.log(`Downloaded: ${progressEvent.loaded} bytes`);
+    }
+  })
+  ```
+</ParamField>
+
+## Adapters
+
+<ParamField path="adapter" type="string | function | array">
+  Allows custom handling of requests. Can be a function, adapter name, or array of adapter names.
+  
+  ```javascript
+  // Use a specific adapter
+  axios.get('/user', {
+    adapter: 'fetch'
+  })
+  
+  // Try multiple adapters (first available is used)
+  axios.get('/user', {
+    adapter: ['fetch', 'xhr', 'http']
+  })
+  
+  // Custom adapter
+  axios.get('/user', {
+    adapter: function (config) {
+      return new Promise((resolve, reject) => {
+        // Custom request logic
+      });
+    }
+  })
+  ```
+</ParamField>
+
+## Cancellation
+
+<ParamField path="signal" type="AbortSignal">
+  An `AbortSignal` from an `AbortController` to cancel the request.
+  
+  ```javascript
+  const controller = new AbortController();
+  
+  axios.get('/user', {
+    signal: controller.signal
+  })
+  
+  controller.abort();
+  ```
+</ParamField>
+
+<ParamField path="cancelToken" type="CancelToken">
+  A cancel token for request cancellation (deprecated - use `signal` instead).
+  
+  ```javascript
+  const source = axios.CancelToken.source();
+  
+  axios.get('/user', {
+    cancelToken: source.token
+  })
+  
+  source.cancel();
+  ```
+</ParamField>
+
+## Proxy configuration
+
+<ParamField path="proxy" type="object | false">
+  Defines the proxy server to use. Set to `false` to disable proxies and ignore environment variables.
+  
+  ```javascript
+  axios.get('/user', {
+    proxy: {
+      protocol: 'https',
+      host: '127.0.0.1',
+      port: 9000,
+      auth: {
+        username: 'mikeymike',
+        password: 'rapunz3l'
+      }
+    }
+  })
+  ```
+</ParamField>
+
+## Node.js specific
+
+<ParamField path="httpAgent" type="http.Agent">
+  Custom agent for HTTP requests in Node.js. Allows options like `keepAlive`.
+  
+  ```javascript
+  const http = require('http');
+  
+  axios.get('/user', {
+    httpAgent: new http.Agent({ keepAlive: true })
+  })
+  ```
+</ParamField>
+
+<ParamField path="httpsAgent" type="https.Agent">
+  Custom agent for HTTPS requests in Node.js.
+  
+  ```javascript
+  const https = require('https');
+  
+  axios.get('/user', {
+    httpsAgent: new https.Agent({ keepAlive: true })
+  })
+  ```
+</ParamField>
+
+<ParamField path="socketPath" type="string | null">
+  UNIX Socket to use in Node.js (e.g., '/var/run/docker.sock'). Only `socketPath` or `proxy` can be specified.
+</ParamField>
+
+<ParamField path="decompress" type="boolean" default="true">
+  Indicates whether the response body should be decompressed automatically. Removes the `content-encoding` header from responses when `true`. Node.js only.
+</ParamField>
+
+<ParamField path="maxRate" type="number | [number, number]">
+  Rate limiting for uploads and downloads (Node.js HTTP adapter only). Values in bytes per second.
+  
+  ```javascript
+  axios.post('/upload', data, {
+    maxRate: [100 * 1024, 100 * 1024] // [upload, download] 100KB/s
+  })
+  ```
+</ParamField>
+
+<ParamField path="insecureHTTPParser" type="boolean">
+  Use an insecure HTTP parser that accepts invalid HTTP headers. Should be avoided. Node.js only.
+</ParamField>
+
+## Advanced options
+
+<ParamField path="paramsSerializer" type="object | function">
+  Customize how `params` are serialized.
+  
+  ```javascript
+  axios.get('/user', {
+    params: { ids: [1, 2, 3] },
+    paramsSerializer: {
+      indexes: null // leads to /user?ids=1&ids=2&ids=3
+    }
+  })
+  ```
+  
+  Options:
+  - `encode`: Custom encoder function
+  - `serialize`: Custom serializer for the entire parameter object
+  - `indexes`: `null` (no brackets), `false` (empty brackets), or `true` (indexed brackets)
+</ParamField>
+
+<ParamField path="formSerializer" type="object">
+  Options for FormData serialization.
+  
+  ```javascript
+  axios.postForm('/user', data, {
+    formSerializer: {
+      dots: true,      // Use dot notation
+      metaTokens: true, // Keep special endings like {}
+      indexes: false    // Array indexes format
+    }
+  })
+  ```
+</ParamField>
+
+<ParamField path="beforeRedirect" type="function">
+  Function called before redirect. Use to adjust request options, inspect headers, or cancel by throwing an error.
+  
+  ```javascript
+  axios.get('/redirect', {
+    beforeRedirect: (options, { headers }) => {
+      if (options.hostname === 'example.com') {
+        options.auth = 'user:password';
+      }
+    }
+  })
+  ```
+</ParamField>
+
+<ParamField path="transitional" type="object">
+  Backward compatibility options.
+  
+  ```javascript
+  axios.get('/user', {
+    transitional: {
+      silentJSONParsing: true,
+      forcedJSONParsing: true,
+      clarifyTimeoutError: false
+    }
+  })
+  ```
+</ParamField>
+
+<ParamField path="env" type="object">
+  Environment-specific polyfills.
+  
+  ```javascript
+  axios.post('/user', data, {
+    env: {
+      FormData: window?.FormData || global?.FormData
+    }
+  })
+  ```
+</ParamField>
+
+## Complete example
+
+```javascript
+const config = {
+  // Basic
+  url: '/user/12345',
+  method: 'post',
+  baseURL: 'https://api.example.com',
+  
+  // Data
+  data: { firstName: 'Fred' },
+  params: { ID: 12345 },
+  
+  // Headers
+  headers: { 'X-Custom-Header': 'foobar' },
+  
+  // Timeout
+  timeout: 5000,
+  
+  // Response
+  responseType: 'json',
+  validateStatus: (status) => status < 500,
+  
+  // Progress
+  onUploadProgress: (progressEvent) => {
+    console.log(progressEvent.progress);
+  },
+  
+  // Auth
+  auth: {
+    username: 'janedoe',
+    password: 's00pers3cret'
+  },
+  
+  // Cancellation
+  signal: new AbortController().signal
+};
+
+axios(config);
+```

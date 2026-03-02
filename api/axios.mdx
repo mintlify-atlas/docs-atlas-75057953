@@ -1,0 +1,565 @@
+---
+title: axios
+description: Main axios instance and methods for making HTTP requests
+---
+
+The `axios` object is the default export of the Axios library. It provides methods for making HTTP requests and managing configuration.
+
+## Making requests
+
+You can make requests using the `axios` function directly.
+
+### axios(config)
+
+Make a request by passing a configuration object.
+
+<ParamField path="config" type="AxiosRequestConfig" required>
+  Request configuration object
+
+  <Expandable title="properties">
+    <ParamField path="method" type="string" default="get">
+      HTTP method to use for the request (get, post, put, delete, etc.)
+    </ParamField>
+
+    <ParamField path="url" type="string">
+      Server URL for the request
+    </ParamField>
+
+    <ParamField path="data" type="any">
+      Request body data (for PUT, POST, PATCH, DELETE methods)
+    </ParamField>
+
+    <ParamField path="headers" type="RawAxiosRequestHeaders | AxiosHeaders">
+      Custom headers to send with the request
+    </ParamField>
+
+    <ParamField path="params" type="any">
+      URL parameters to be sent with the request
+    </ParamField>
+
+    <ParamField path="timeout" type="number" default="0">
+      Request timeout in milliseconds (0 means no timeout)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+```js
+// Send a POST request
+axios({
+  method: 'post',
+  url: '/user/12345',
+  data: {
+    firstName: 'Fred',
+    lastName: 'Flintstone'
+  }
+});
+```
+
+### axios(url[, config])
+
+Make a GET request (default method) by passing a URL and optional configuration.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration object
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+```js
+// Send a GET request (default method)
+axios('/user/12345');
+```
+
+## Request method aliases
+
+Axios provides aliases for common HTTP methods.
+
+### axios.request(config)
+
+Make a request using the specified configuration.
+
+<ParamField path="config" type="AxiosRequestConfig" required>
+  Request configuration object
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### axios.get(url[, config])
+
+Make a GET request.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+```js
+const response = await axios.get('/user?ID=12345');
+console.log(response);
+```
+
+### axios.post(url[, data[, config]])
+
+Make a POST request.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="data" type="any">
+  Data to be sent as the request body
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+```js
+const response = await axios.post('/user', {
+  firstName: 'Fred',
+  lastName: 'Flintstone'
+});
+console.log(response);
+```
+
+### axios.put(url[, data[, config]])
+
+Make a PUT request.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="data" type="any">
+  Data to be sent as the request body
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### axios.patch(url[, data[, config]])
+
+Make a PATCH request.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="data" type="any">
+  Data to be sent as the request body
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### axios.delete(url[, config])
+
+Make a DELETE request.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### axios.head(url[, config])
+
+Make a HEAD request.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### axios.options(url[, config])
+
+Make an OPTIONS request.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### axios.postForm(url[, data[, config]])
+
+Make a POST request with Content-Type set to multipart/form-data.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="data" type="any">
+  Data to be sent as the request body (automatically serialized to FormData)
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+```js
+await axios.postForm('https://httpbin.org/post', {
+  myVar: 'foo',
+  file: document.querySelector('#fileInput').files[0]
+});
+```
+
+### axios.putForm(url[, data[, config]])
+
+Make a PUT request with Content-Type set to multipart/form-data.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="data" type="any">
+  Data to be sent as the request body (automatically serialized to FormData)
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### axios.patchForm(url[, data[, config]])
+
+Make a PATCH request with Content-Type set to multipart/form-data.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="data" type="any">
+  Data to be sent as the request body (automatically serialized to FormData)
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+## Creating instances
+
+### axios.create([config])
+
+Create a new instance of axios with custom configuration.
+
+<ParamField path="config" type="CreateAxiosDefaults">
+  Default configuration for the new instance
+
+  <Expandable title="properties">
+    <ParamField path="baseURL" type="string">
+      Base URL that will be prepended to relative URLs
+    </ParamField>
+
+    <ParamField path="timeout" type="number" default="0">
+      Request timeout in milliseconds
+    </ParamField>
+
+    <ParamField path="headers" type="RawAxiosRequestHeaders | AxiosHeaders">
+      Custom headers to be sent with every request
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="AxiosInstance" type="AxiosInstance">
+  Returns a new axios instance with the specified configuration
+</ResponseField>
+
+```js
+const instance = axios.create({
+  baseURL: 'https://some-domain.com/api/',
+  timeout: 1000,
+  headers: {'X-Custom-Header': 'foobar'}
+});
+```
+
+## Static properties
+
+### axios.defaults
+
+Default configuration object that will be merged with every request configuration.
+
+```js
+axios.defaults.baseURL = 'https://api.example.com';
+axios.defaults.headers.common['Authorization'] = AUTH_TOKEN;
+axios.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded';
+```
+
+### axios.interceptors
+
+Interceptor managers for requests and responses.
+
+<ResponseField name="request" type="AxiosInterceptorManager<InternalAxiosRequestConfig>">
+  Request interceptor manager
+</ResponseField>
+
+<ResponseField name="response" type="AxiosInterceptorManager<AxiosResponse>">
+  Response interceptor manager
+</ResponseField>
+
+```js
+// Add a request interceptor
+axios.interceptors.request.use(
+  function (config) {
+    // Do something before request is sent
+    return config;
+  },
+  function (error) {
+    // Do something with request error
+    return Promise.reject(error);
+  }
+);
+
+// Add a response interceptor
+axios.interceptors.response.use(
+  function (response) {
+    // Any status code within the range of 2xx triggers this function
+    return response;
+  },
+  function (error) {
+    // Any status codes outside the range of 2xx trigger this function
+    return Promise.reject(error);
+  }
+);
+```
+
+## Utility methods
+
+### axios.all(promises)
+
+Helper function for dealing with concurrent requests. Use `Promise.all` instead.
+
+<ParamField path="promises" type="Array<T | Promise<T>>" required>
+  Array of promises to resolve concurrently
+</ParamField>
+
+<ResponseField name="Promise<T[]>" type="Promise">
+  Returns a promise that resolves to an array of results
+</ResponseField>
+
+```js
+function getUserAccount() {
+  return axios.get('/user/12345');
+}
+
+function getUserPermissions() {
+  return axios.get('/user/12345/permissions');
+}
+
+Promise.all([getUserAccount(), getUserPermissions()])
+  .then(function (results) {
+    const acct = results[0];
+    const perm = results[1];
+  });
+```
+
+### axios.spread(callback)
+
+Helper function to spread array results into separate arguments.
+
+<ParamField path="callback" type="(...args: T[]) => R" required>
+  Function that receives spread arguments
+</ParamField>
+
+<ResponseField name="(array: T[]) => R" type="function">
+  Returns a function that spreads the array into arguments
+</ResponseField>
+
+### axios.isAxiosError(payload)
+
+Type guard to check if a value is an AxiosError.
+
+<ParamField path="payload" type="any" required>
+  Value to check
+</ParamField>
+
+<ResponseField name="boolean" type="boolean">
+  Returns true if the payload is an AxiosError, false otherwise
+</ResponseField>
+
+```js
+axios.get('/user/12345')
+  .catch(function (error) {
+    if (axios.isAxiosError(error)) {
+      console.log(error.response.data);
+      console.log(error.response.status);
+    }
+  });
+```
+
+### axios.isCancel(value)
+
+Type guard to check if a value is a CanceledError.
+
+<ParamField path="value" type="any" required>
+  Value to check
+</ParamField>
+
+<ResponseField name="boolean" type="boolean">
+  Returns true if the value is a CanceledError, false otherwise
+</ResponseField>
+
+### axios.toFormData(sourceObj[, targetFormData[, options]])
+
+Convert an object to FormData.
+
+<ParamField path="sourceObj" type="object" required>
+  Object to convert to FormData
+</ParamField>
+
+<ParamField path="targetFormData" type="GenericFormData">
+  Optional target FormData instance
+</ParamField>
+
+<ParamField path="options" type="FormSerializerOptions">
+  Serialization options
+</ParamField>
+
+<ResponseField name="GenericFormData" type="GenericFormData">
+  Returns a FormData object
+</ResponseField>
+
+### axios.formToJSON(form)
+
+Convert a FormData or HTMLFormElement to a JSON object.
+
+<ParamField path="form" type="GenericFormData | GenericHTMLFormElement" required>
+  FormData or form element to convert
+</ParamField>
+
+<ResponseField name="object" type="object">
+  Returns a JSON object
+</ResponseField>
+
+### axios.mergeConfig(config1, config2)
+
+Merge two configuration objects.
+
+<ParamField path="config1" type="AxiosRequestConfig" required>
+  First configuration object
+</ParamField>
+
+<ParamField path="config2" type="AxiosRequestConfig" required>
+  Second configuration object (takes precedence)
+</ParamField>
+
+<ResponseField name="AxiosRequestConfig" type="AxiosRequestConfig">
+  Returns the merged configuration object
+</ResponseField>
+
+### axios.getAdapter(adapters)
+
+Get the appropriate adapter based on the environment.
+
+<ParamField path="adapters" type="AxiosAdapterConfig | AxiosAdapterConfig[]" required>
+  Adapter name(s) or adapter function(s)
+</ParamField>
+
+<ResponseField name="AxiosAdapter" type="AxiosAdapter">
+  Returns the selected adapter function
+</ResponseField>
+
+## Static classes and types
+
+### axios.Axios
+
+Reference to the Axios class for creating instances or extending functionality.
+
+### axios.AxiosError
+
+AxiosError class for creating or identifying axios errors.
+
+### axios.CanceledError
+
+CanceledError class for request cancellation.
+
+### axios.CancelToken
+
+CancelToken class for creating cancel tokens (deprecated, use AbortController instead).
+
+### axios.AxiosHeaders
+
+AxiosHeaders class for manipulating headers with a Map-like API.
+
+### axios.HttpStatusCode
+
+Enum containing HTTP status codes.
+
+```js
+import { HttpStatusCode } from 'axios';
+
+if (response.status === HttpStatusCode.Ok) {
+  // Handle 200 OK response
+}
+```
+
+### axios.VERSION
+
+Current version of Axios.
+
+```js
+console.log(axios.VERSION);
+```

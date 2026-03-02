@@ -1,0 +1,449 @@
+---
+title: AxiosInstance
+description: Custom axios instance interface with its own configuration and methods
+---
+
+The `AxiosInstance` interface represents a custom instance of axios with its own configuration. Instances are created using `axios.create()` and provide all the same methods as the default axios export.
+
+## Creating an instance
+
+Create a new instance with custom configuration:
+
+```js
+const instance = axios.create({
+  baseURL: 'https://some-domain.com/api/',
+  timeout: 1000,
+  headers: {'X-Custom-Header': 'foobar'}
+});
+```
+
+## Instance properties
+
+### defaults
+
+Default configuration for this instance. The configuration will be merged with the request config for each request.
+
+<ResponseField name="baseURL" type="string">
+  Base URL that will be prepended to relative URLs
+</ResponseField>
+
+<ResponseField name="timeout" type="number">
+  Request timeout in milliseconds
+</ResponseField>
+
+<ResponseField name="headers" type="HeadersDefaults">
+  Default headers for each HTTP method
+
+  <Expandable title="properties">
+    <ResponseField name="common" type="RawAxiosRequestHeaders">
+      Headers sent with all requests
+    </ResponseField>
+
+    <ResponseField name="get" type="RawAxiosRequestHeaders">
+      Headers sent with GET requests
+    </ResponseField>
+
+    <ResponseField name="post" type="RawAxiosRequestHeaders">
+      Headers sent with POST requests
+    </ResponseField>
+
+    <ResponseField name="put" type="RawAxiosRequestHeaders">
+      Headers sent with PUT requests
+    </ResponseField>
+
+    <ResponseField name="patch" type="RawAxiosRequestHeaders">
+      Headers sent with PATCH requests
+    </ResponseField>
+
+    <ResponseField name="delete" type="RawAxiosRequestHeaders">
+      Headers sent with DELETE requests
+    </ResponseField>
+
+    <ResponseField name="head" type="RawAxiosRequestHeaders">
+      Headers sent with HEAD requests
+    </ResponseField>
+
+    <ResponseField name="options" type="RawAxiosRequestHeaders">
+      Headers sent with OPTIONS requests
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```js
+// Set config defaults when creating the instance
+const instance = axios.create({
+  baseURL: 'https://api.example.com'
+});
+
+// Alter defaults after instance has been created
+instance.defaults.headers.common['Authorization'] = AUTH_TOKEN;
+```
+
+### interceptors
+
+Interceptor managers for requests and responses on this instance.
+
+<ResponseField name="request" type="AxiosInterceptorManager<InternalAxiosRequestConfig>">
+  Request interceptor manager for this instance
+</ResponseField>
+
+<ResponseField name="response" type="AxiosInterceptorManager<AxiosResponse>">
+  Response interceptor manager for this instance
+</ResponseField>
+
+```js
+const instance = axios.create();
+
+// Add a request interceptor
+instance.interceptors.request.use(
+  function (config) {
+    // Do something before request is sent
+    return config;
+  },
+  function (error) {
+    // Do something with request error
+    return Promise.reject(error);
+  }
+);
+```
+
+## Instance methods
+
+All instance methods merge the provided config with the instance defaults.
+
+### instance(config)
+
+Make a request using the instance with a configuration object.
+
+<ParamField path="config" type="AxiosRequestConfig" required>
+  Request configuration object
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+```js
+const instance = axios.create({
+  baseURL: 'https://api.example.com'
+});
+
+instance({
+  method: 'post',
+  url: '/user/12345',
+  data: {
+    firstName: 'Fred',
+    lastName: 'Flintstone'
+  }
+});
+```
+
+### instance(url[, config])
+
+Make a GET request using the instance.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### instance.request(config)
+
+Make a request using the specified configuration.
+
+<ParamField path="config" type="AxiosRequestConfig" required>
+  Request configuration object
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### instance.get(url[, config])
+
+Make a GET request.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+```js
+const instance = axios.create({
+  baseURL: 'https://api.example.com'
+});
+
+const response = await instance.get('/user?ID=12345');
+```
+
+### instance.post(url[, data[, config]])
+
+Make a POST request.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="data" type="any">
+  Data to be sent as the request body
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### instance.put(url[, data[, config]])
+
+Make a PUT request.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="data" type="any">
+  Data to be sent as the request body
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### instance.patch(url[, data[, config]])
+
+Make a PATCH request.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="data" type="any">
+  Data to be sent as the request body
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### instance.delete(url[, config])
+
+Make a DELETE request.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### instance.head(url[, config])
+
+Make a HEAD request.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### instance.options(url[, config])
+
+Make an OPTIONS request.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### instance.postForm(url[, data[, config]])
+
+Make a POST request with Content-Type set to multipart/form-data.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="data" type="any">
+  Data to be sent as the request body (automatically serialized to FormData)
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### instance.putForm(url[, data[, config]])
+
+Make a PUT request with Content-Type set to multipart/form-data.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="data" type="any">
+  Data to be sent as the request body (automatically serialized to FormData)
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### instance.patchForm(url[, data[, config]])
+
+Make a PATCH request with Content-Type set to multipart/form-data.
+
+<ParamField path="url" type="string" required>
+  Server URL for the request
+</ParamField>
+
+<ParamField path="data" type="any">
+  Data to be sent as the request body (automatically serialized to FormData)
+</ParamField>
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Optional request configuration
+</ParamField>
+
+<ResponseField name="Promise<AxiosResponse>" type="Promise">
+  Returns a promise that resolves to an AxiosResponse object
+</ResponseField>
+
+### instance.getUri([config])
+
+Generate a URL for a request without making the request.
+
+<ParamField path="config" type="AxiosRequestConfig">
+  Request configuration object
+</ParamField>
+
+<ResponseField name="string" type="string">
+  Returns the generated URL string
+</ResponseField>
+
+```js
+const instance = axios.create({
+  baseURL: 'https://api.example.com'
+});
+
+const uri = instance.getUri({
+  url: '/user',
+  params: { ID: 12345 }
+});
+console.log(uri); // https://api.example.com/user?ID=12345
+```
+
+### instance.create([config])
+
+Create a new instance with merged configuration.
+
+<ParamField path="config" type="CreateAxiosDefaults">
+  Configuration to merge with the current instance defaults
+</ParamField>
+
+<ResponseField name="AxiosInstance" type="AxiosInstance">
+  Returns a new axios instance
+</ResponseField>
+
+```js
+const instance = axios.create({
+  baseURL: 'https://api.example.com'
+});
+
+// Create a child instance with additional config
+const childInstance = instance.create({
+  timeout: 5000
+});
+// childInstance has baseURL from parent and timeout from child
+```
+
+## Configuration precedence
+
+Configuration is merged with the following order of precedence:
+
+1. Library defaults (lowest priority)
+2. Instance defaults
+3. Request config (highest priority)
+
+```js
+// Create an instance using the config defaults provided by the library
+// At this point the timeout config value is 0 as is the default for the library
+const instance = axios.create();
+
+// Override timeout default for the library
+// Now all requests using this instance will wait 2.5 seconds before timing out
+instance.defaults.timeout = 2500;
+
+// Override timeout for this request as it's known to take a long time
+instance.get('/longRequest', {
+  timeout: 5000
+});
+```
+
+## TypeScript support
+
+The AxiosInstance interface supports TypeScript generics for type-safe requests:
+
+```typescript
+interface User {
+  id: number;
+  name: string;
+}
+
+const instance = axios.create({
+  baseURL: 'https://api.example.com'
+});
+
+// Type-safe response
+const response = await instance.get<User>('/user/12345');
+const user: User = response.data;
+```

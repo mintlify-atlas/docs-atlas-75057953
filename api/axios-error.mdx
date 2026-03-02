@@ -1,0 +1,364 @@
+---
+title: AxiosError class
+description: Enhanced error class for HTTP errors with request and response context.
+---
+
+The `AxiosError` class extends the native JavaScript `Error` class and provides additional context about failed HTTP requests, including configuration, request, response, and error codes.
+
+## Constructor
+
+<ParamField path="message" type="string" optional>
+  The error message.
+</ParamField>
+
+<ParamField path="code" type="string" optional>
+  The error code (e.g., 'ECONNABORTED', 'ERR_NETWORK').
+</ParamField>
+
+<ParamField path="config" type="InternalAxiosRequestConfig<D>" optional>
+  The request configuration that was used.
+</ParamField>
+
+<ParamField path="request" type="any" optional>
+  The request object (XMLHttpRequest in browser, ClientRequest in Node.js).
+</ParamField>
+
+<ParamField path="response" type="AxiosResponse<T, D>" optional>
+  The response object, if the server responded.
+</ParamField>
+
+```typescript
+import { AxiosError } from 'axios';
+
+const error = new AxiosError(
+  'Request failed with status code 404',
+  'ERR_BAD_REQUEST',
+  config,
+  request,
+  response
+);
+```
+
+## Properties
+
+### message
+
+<ParamField path="message" type="string">
+  The error message describing what went wrong.
+</ParamField>
+
+### name
+
+<ParamField path="name" type="string">
+  Always set to `'AxiosError'`.
+</ParamField>
+
+### code
+
+<ParamField path="code" type="string" optional>
+  The error code identifying the type of error. See [Error codes](#error-codes) for common values.
+</ParamField>
+
+### config
+
+<ParamField path="config" type="InternalAxiosRequestConfig<D>" optional>
+  The Axios request configuration that was used for the failed request.
+</ParamField>
+
+### request
+
+<ParamField path="request" type="any" optional>
+  The underlying request object. This is the XMLHttpRequest instance in browsers or the ClientRequest in Node.js.
+</ParamField>
+
+### response
+
+<ParamField path="response" type="AxiosResponse<T, D>" optional>
+  The response object from the server, if one was received. Contains status, headers, and data.
+</ParamField>
+
+### status
+
+<ParamField path="status" type="number" optional>
+  The HTTP status code from the response, if available.
+</ParamField>
+
+### isAxiosError
+
+<ParamField path="isAxiosError" type="boolean">
+  Always `true`. Used to identify AxiosError instances.
+</ParamField>
+
+### cause
+
+<ParamField path="cause" type="Error" optional>
+  The original error that caused this AxiosError, when created using `AxiosError.from()`.
+</ParamField>
+
+### event
+
+<ParamField path="event" type="BrowserProgressEvent" optional>
+  The browser progress event, if available.
+</ParamField>
+
+## Methods
+
+### toJSON()
+
+Serialize the error to a JSON object.
+
+<ParamField path="returns" type="object">
+  An object containing all serializable error properties.
+</ParamField>
+
+```javascript
+try {
+  await axios.get('/api/data');
+} catch (error) {
+  if (error.isAxiosError) {
+    console.log(error.toJSON());
+    // {
+    //   message: 'Request failed with status code 404',
+    //   name: 'AxiosError',
+    //   code: 'ERR_BAD_REQUEST',
+    //   status: 404,
+    //   config: { ... },
+    //   stack: '...'
+    // }
+  }
+}
+```
+
+## Static methods
+
+### from()
+
+Create an AxiosError from an existing error object.
+
+<ParamField path="error" type="Error | unknown" required>
+  The original error to convert.
+</ParamField>
+
+<ParamField path="code" type="string" optional>
+  Optional error code to set.
+</ParamField>
+
+<ParamField path="config" type="InternalAxiosRequestConfig<D>" optional>
+  Optional request configuration.
+</ParamField>
+
+<ParamField path="request" type="any" optional>
+  Optional request object.
+</ParamField>
+
+<ParamField path="response" type="AxiosResponse<T, D>" optional>
+  Optional response object.
+</ParamField>
+
+<ParamField path="customProps" type="object" optional>
+  Additional custom properties to assign to the error.
+</ParamField>
+
+<ParamField path="returns" type="AxiosError<T, D>">
+  A new AxiosError instance.
+</ParamField>
+
+```javascript
+try {
+  // Some operation
+  throw new Error('Network timeout');
+} catch (err) {
+  const axiosError = AxiosError.from(
+    err,
+    'ETIMEDOUT',
+    config,
+    request,
+    response
+  );
+  throw axiosError;
+}
+```
+
+## Error codes
+
+AxiosError includes predefined error code constants:
+
+### ERR_BAD_OPTION_VALUE
+
+<ParamField path="ERR_BAD_OPTION_VALUE" type="string">
+  Indicates an invalid value was provided for a configuration option.
+</ParamField>
+
+### ERR_BAD_OPTION
+
+<ParamField path="ERR_BAD_OPTION" type="string">
+  Indicates an invalid configuration option was used.
+</ParamField>
+
+### ECONNABORTED
+
+<ParamField path="ECONNABORTED" type="string">
+  The request was aborted before it completed.
+</ParamField>
+
+### ETIMEDOUT
+
+<ParamField path="ETIMEDOUT" type="string">
+  The request timed out.
+</ParamField>
+
+### ERR_NETWORK
+
+<ParamField path="ERR_NETWORK" type="string">
+  A network error occurred (e.g., connection lost, DNS lookup failed).
+</ParamField>
+
+### ERR_FR_TOO_MANY_REDIRECTS
+
+<ParamField path="ERR_FR_TOO_MANY_REDIRECTS" type="string">
+  Too many redirects were followed.
+</ParamField>
+
+### ERR_DEPRECATED
+
+<ParamField path="ERR_DEPRECATED" type="string">
+  A deprecated feature was used.
+</ParamField>
+
+### ERR_BAD_RESPONSE
+
+<ParamField path="ERR_BAD_RESPONSE" type="string">
+  The server response was invalid or couldn't be parsed.
+</ParamField>
+
+### ERR_BAD_REQUEST
+
+<ParamField path="ERR_BAD_REQUEST" type="string">
+  The request was malformed or invalid.
+</ParamField>
+
+### ERR_CANCELED
+
+<ParamField path="ERR_CANCELED" type="string">
+  The request was canceled.
+</ParamField>
+
+### ERR_NOT_SUPPORT
+
+<ParamField path="ERR_NOT_SUPPORT" type="string">
+  The requested feature is not supported in the current environment.
+</ParamField>
+
+### ERR_INVALID_URL
+
+<ParamField path="ERR_INVALID_URL" type="string">
+  The provided URL is invalid.
+</ParamField>
+
+## Usage examples
+
+### Handling errors with full context
+
+```javascript
+import axios, { AxiosError } from 'axios';
+
+try {
+  const response = await axios.get('/api/users');
+  console.log(response.data);
+} catch (error) {
+  if (error instanceof AxiosError) {
+    console.log('Error code:', error.code);
+    console.log('Error message:', error.message);
+    console.log('Response status:', error.response?.status);
+    console.log('Response data:', error.response?.data);
+    console.log('Request config:', error.config);
+  } else {
+    console.log('Non-Axios error:', error);
+  }
+}
+```
+
+### Checking for specific error types
+
+```javascript
+import axios, { AxiosError } from 'axios';
+
+try {
+  await axios.get('/api/data', { timeout: 5000 });
+} catch (error) {
+  if (error.code === AxiosError.ETIMEDOUT) {
+    console.log('Request timed out');
+  } else if (error.code === AxiosError.ERR_NETWORK) {
+    console.log('Network error - check your connection');
+  } else if (error.response) {
+    // Server responded with error status
+    if (error.response.status === 404) {
+      console.log('Resource not found');
+    } else if (error.response.status === 500) {
+      console.log('Server error');
+    }
+  }
+}
+```
+
+### Using isAxiosError helper
+
+```javascript
+import axios, { isAxiosError } from 'axios';
+
+try {
+  await axios.post('/api/users', userData);
+} catch (error) {
+  if (isAxiosError(error)) {
+    // TypeScript now knows this is an AxiosError
+    if (error.response?.status === 422) {
+      console.log('Validation errors:', error.response.data.errors);
+    }
+  } else {
+    console.log('Unexpected error:', error);
+  }
+}
+```
+
+### Creating custom AxiosErrors
+
+```javascript
+import { AxiosError } from 'axios';
+
+function validateData(data) {
+  if (!data.email) {
+    throw new AxiosError(
+      'Email is required',
+      'ERR_BAD_REQUEST',
+      { url: '/api/users', method: 'post' }
+    );
+  }
+}
+
+try {
+  validateData({ name: 'John' });
+} catch (error) {
+  console.log(error.isAxiosError); // true
+  console.log(error.code); // 'ERR_BAD_REQUEST'
+}
+```
+
+### Converting regular errors
+
+```javascript
+import { AxiosError } from 'axios';
+
+try {
+  JSON.parse('invalid json');
+} catch (error) {
+  // Convert to AxiosError for consistent error handling
+  throw AxiosError.from(
+    error,
+    'ERR_BAD_RESPONSE',
+    config,
+    request,
+    response,
+    { customField: 'value' }
+  );
+}
+```

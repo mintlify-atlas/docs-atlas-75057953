@@ -1,0 +1,420 @@
+---
+title: HTTP adapters
+description: Understand Axios adapters for XHR, HTTP, and Fetch, and learn how to create custom adapters for specialized request handling
+---
+
+Axios uses adapters to handle the actual HTTP requests. Different adapters are used depending on the environment (browser vs Node.js) and your specific needs.
+
+## Built-in adapters
+
+Axios includes three built-in adapters:
+
+<CardGroup cols={3}>
+  <Card title="XHR" icon="browser">
+    Browser XMLHttpRequest adapter (default in browsers)
+  </Card>
+  <Card title="HTTP" icon="server">
+    Node.js http/https adapter (default in Node.js)
+  </Card>
+  <Card title="Fetch" icon="globe">
+    Modern Fetch API adapter (browser and Node.js 18+)
+  </Card>
+</CardGroup>
+
+## Adapter selection
+
+Axios automatically selects the appropriate adapter based on the environment. You can also explicitly specify which adapter to use:
+
+### Using a specific adapter
+
+```javascript
+// Use the fetch adapter
+axios.get('/user', {
+  adapter: 'fetch'
+});
+
+// Use the XHR adapter
+axios.get('/user', {
+  adapter: 'xhr'
+});
+
+// Use the HTTP adapter (Node.js)
+axios.get('/user', {
+  adapter: 'http'
+});
+```
+
+### Fallback adapters
+
+Provide an array of adapters to try in order. Axios will use the first available adapter:
+
+```javascript
+axios.get('/user', {
+  adapter: ['fetch', 'xhr', 'http']
+});
+```
+
+This is useful for writing code that works in multiple environments.
+
+## XHR adapter (browser)
+
+The XMLHttpRequest adapter is the default in browsers. It provides:
+
+- Broad browser compatibility
+- Full support for progress events
+- Request cancellation via AbortController
+- Automatic XSRF protection
+- Cookie handling with credentials
+
+```javascript
+// XHR adapter is used by default in browsers
+axios.get('/api/data').then(response => {
+  console.log(response.data);
+});
+```
+
+### XHR-specific features
+
+```javascript
+axios.get('/data', {
+  adapter: 'xhr',
+  // XHR-specific options
+  responseType: 'blob', // arraybuffer, document, json, text, blob
+  withCredentials: true, // Send cookies with cross-origin requests
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-XSRF-TOKEN'
+});
+```
+
+## HTTP adapter (Node.js)
+
+The HTTP adapter uses Node.js's built-in `http` and `https` modules. It's the default in Node.js environments and provides:
+
+- Native Node.js stream support
+- HTTP/2 support
+- Custom agents for connection pooling
+- Proxy support
+- Rate limiting
+
+```javascript
+const axios = require('axios');
+const http = require('http');
+const https = require('https');
+
+axios.get('https://api.example.com/data', {
+  adapter: 'http',
+  // HTTP adapter-specific options
+  httpAgent: new http.Agent({ keepAlive: true }),
+  httpsAgent: new https.Agent({ keepAlive: true }),
+  maxRedirects: 5,
+  socketPath: '/var/run/docker.sock'
+});
+```
+
+### Stream support
+
+```javascript
+const fs = require('fs');
+
+// Upload a stream
+const stream = fs.createReadStream('./file.txt');
+axios.post('/upload', stream, {
+  headers: {
+    'Content-Type': 'text/plain'
+  }
+});
+
+// Download to stream
+axios.get('/download', {
+  responseType: 'stream'
+}).then(response => {
+  response.data.pipe(fs.createWriteStream('./downloaded-file.txt'));
+});
+```
+
+### HTTP/2 support
+
+```javascript
+axios.get('https://api.example.com/data', {
+  httpVersion: 2,
+  http2Options: {
+    sessionTimeout: 60000
+  }
+});
+```
+
+### Rate limiting
+
+```javascript
+axios.post('/upload', data, {
+  adapter: 'http',
+  maxRate: [
+    100 * 1024, // 100KB/s upload limit
+    100 * 1024  // 100KB/s download limit
+  ]
+});
+```
+
+## Fetch adapter
+
+The Fetch adapter uses the modern Fetch API, available in modern browsers and Node.js 18+. Benefits include:
+
+- Standards-based API
+- Native Request/Response objects
+- Service Worker compatibility
+- Streaming response bodies
+
+```javascript
+axios.get('/api/data', {
+  adapter: 'fetch',
+  // Fetch-specific options
+  fetchOptions: {
+    mode: 'cors',
+    cache: 'no-cache',
+    credentials: 'same-origin'
+  }
+});
+```
+
+### Custom fetch implementation
+
+You can provide a custom fetch implementation:
+
+```javascript
+axios.get('/api/data', {
+  adapter: 'fetch',
+  env: {
+    fetch: customFetch,
+    Request: customRequest,
+    Response: customResponse
+  }
+});
+```
+
+### Using with Tauri
+
+```javascript
+import axios from 'axios';
+import { fetch } from '@tauri-apps/api/http';
+
+const instance = axios.create({
+  adapter: 'fetch',
+  env: { fetch }
+});
+
+instance.get('/api/data');
+```
+
+### Using with SvelteKit
+
+```javascript
+import axios from 'axios';
+
+export async function load({ fetch }) {
+  const instance = axios.create({
+    adapter: 'fetch',
+    env: { fetch }
+  });
+  
+  const response = await instance.get('/api/data');
+  return { data: response.data };
+}
+```
+
+## Custom adapters
+
+Create custom adapters for specialized request handling:
+
+```javascript
+function myAdapter(config) {
+  return new Promise((resolve, reject) => {
+    // Perform the request using any method you want
+    // Must return a promise that resolves with a response object
+    
+    const response = {
+      data: { custom: 'data' },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: config,
+      request: {}
+    };
+    
+    // Check for errors
+    if (response.status >= 200 && response.status < 300) {
+      resolve(response);
+    } else {
+      reject(new Error('Request failed'));
+    }
+  });
+}
+
+// Use the custom adapter
+axios.get('/data', {
+  adapter: myAdapter
+});
+```
+
+### Testing adapter example
+
+```javascript
+import axios from 'axios';
+
+function mockAdapter(config) {
+  return new Promise((resolve) => {
+    const mockData = {
+      '/user': { id: 1, name: 'John Doe' },
+      '/posts': [{ id: 1, title: 'Post 1' }]
+    };
+    
+    setTimeout(() => {
+      resolve({
+        data: mockData[config.url] || {},
+        status: 200,
+        statusText: 'OK',
+        headers: { 'content-type': 'application/json' },
+        config: config
+      });
+    }, 100); // Simulate network delay
+  });
+}
+
+// Use in tests
+const testInstance = axios.create({
+  adapter: mockAdapter
+});
+
+const response = await testInstance.get('/user');
+console.log(response.data); // { id: 1, name: 'John Doe' }
+```
+
+### Logging adapter
+
+```javascript
+import axios from 'axios';
+
+function createLoggingAdapter(adapter) {
+  return async function(config) {
+    console.log('Request:', {
+      method: config.method,
+      url: config.url,
+      headers: config.headers
+    });
+    
+    const start = Date.now();
+    
+    try {
+      const response = await adapter(config);
+      const duration = Date.now() - start;
+      
+      console.log('Response:', {
+        status: response.status,
+        duration: `${duration}ms`,
+        data: response.data
+      });
+      
+      return response;
+    } catch (error) {
+      const duration = Date.now() - start;
+      
+      console.error('Error:', {
+        message: error.message,
+        duration: `${duration}ms`
+      });
+      
+      throw error;
+    }
+  };
+}
+
+// Use with default adapter
+import adapters from 'axios/lib/adapters/adapters';
+
+const defaultAdapter = adapters.getAdapter('xhr');
+const loggingAdapter = createLoggingAdapter(defaultAdapter);
+
+const instance = axios.create({
+  adapter: loggingAdapter
+});
+```
+
+## Adapter requirements
+
+Custom adapters must:
+
+1. Accept an `InternalAxiosRequestConfig` object
+2. Return a Promise
+3. Resolve with a response object containing:
+   - `data`: The response body
+   - `status`: HTTP status code
+   - `statusText`: HTTP status message
+   - `headers`: Response headers
+   - `config`: The request configuration
+   - `request`: The request object (optional)
+4. Reject with an `AxiosError` for failures
+
+```typescript
+import { InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+
+function customAdapter(
+  config: InternalAxiosRequestConfig
+): Promise<AxiosResponse> {
+  return new Promise((resolve, reject) => {
+    // Implementation
+  });
+}
+```
+
+## Getting the default adapter
+
+Retrieve the adapter that Axios would use by default:
+
+```javascript
+import { getAdapter } from 'axios';
+
+const adapter = getAdapter('xhr'); // Get XHR adapter
+const adapter = getAdapter(['fetch', 'xhr']); // Get first available
+```
+
+## Environment detection
+
+Axios automatically detects the environment and selects the appropriate adapter:
+
+```javascript
+// In browser: uses XHR adapter
+axios.get('/api/data');
+
+// In Node.js: uses HTTP adapter
+axios.get('https://api.example.com/data');
+
+// In Node.js 18+ or modern browser: can use Fetch adapter
+axios.get('/api/data', { adapter: 'fetch' });
+```
+
+## Adapter comparison
+
+<Accordion title="Feature comparison">
+  | Feature | XHR | HTTP | Fetch |
+  |---------|-----|------|-------|
+  | Browser support | ✅ | ❌ | ✅ Modern |
+  | Node.js support | ❌ | ✅ | ✅ v18+ |
+  | Progress events | ✅ | ✅ | ✅ |
+  | Streams | ❌ | ✅ | ✅ |
+  | HTTP/2 | ❌ | ✅ | ✅ |
+  | Request cancellation | ✅ | ✅ | ✅ |
+  | XSRF protection | ✅ | ❌ | ❌ |
+  | Proxy support | ❌ | ✅ | ❌ |
+  | Rate limiting | ❌ | ✅ | ❌ |
+  | Service Workers | ❌ | ❌ | ✅ |
+</Accordion>
+
+## Best practices
+
+<Note>
+- Use the default adapter unless you have a specific need
+- For cross-platform code, specify fallback adapters: `['fetch', 'xhr', 'http']`
+- Test custom adapters thoroughly with error cases
+- Consider performance implications when choosing adapters
+- Use the Fetch adapter for Service Worker compatibility
+- Use the HTTP adapter for Node.js-specific features like streams and HTTP/2
+</Note>

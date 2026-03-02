@@ -1,0 +1,351 @@
+---
+title: Making requests
+description: Learn how to make HTTP requests with Axios using different methods and configurations
+---
+
+Axios provides multiple ways to make HTTP requests, from simple GET requests to complex POST operations with custom configurations.
+
+## Basic requests
+
+The simplest way to make a request is using the convenience methods for common HTTP verbs.
+
+<CodeGroup>
+```javascript GET request
+import axios from 'axios';
+
+try {
+  const response = await axios.get('/user?ID=12345');
+  console.log(response);
+} catch (error) {
+  console.error(error);
+}
+```
+
+```javascript POST request
+const response = await axios.post('/user', {
+  firstName: 'Fred',
+  lastName: 'Flintstone'
+});
+console.log(response);
+```
+
+```javascript With promises
+axios.get('/user', {
+  params: {
+    ID: 12345
+  }
+})
+.then(function (response) {
+  console.log(response);
+})
+.catch(function (error) {
+  console.log(error);
+})
+.finally(function () {
+  // always executed
+});
+```
+</CodeGroup>
+
+<Note>
+Async/await is part of ECMAScript 2017 and is not supported in Internet Explorer and older browsers.
+</Note>
+
+## Request method aliases
+
+Axios provides convenient aliases for all supported request methods. When using these aliases, `url`, `method`, and `data` properties don't need to be specified in the config.
+
+<Tabs>
+  <Tab title="Without data">
+    These methods don't accept a request body:
+
+    ```javascript
+    axios.request(config)
+    axios.get(url[, config])
+    axios.delete(url[, config])
+    axios.head(url[, config])
+    axios.options(url[, config])
+    ```
+  </Tab>
+  
+  <Tab title="With data">
+    These methods accept data in the request body:
+
+    ```javascript
+    axios.post(url[, data[, config]])
+    axios.put(url[, data[, config]])
+    axios.patch(url[, data[, config]])
+    ```
+  </Tab>
+  
+  <Tab title="Form data">
+    Shortcut methods with Content-Type preset to `multipart/form-data`:
+
+    ```javascript
+    axios.postForm(url[, data[, config]])
+    axios.putForm(url[, data[, config]])
+    axios.patchForm(url[, data[, config]])
+    ```
+  </Tab>
+</Tabs>
+
+## Using the axios API
+
+You can pass a configuration object to `axios()` for full control over the request.
+
+### axios(config)
+
+<CodeGroup>
+```javascript POST with config
+// Send a POST request
+axios({
+  method: 'post',
+  url: '/user/12345',
+  data: {
+    firstName: 'Fred',
+    lastName: 'Flintstone'
+  }
+});
+```
+
+```javascript Stream download
+// GET request for remote image in node.js
+const response = await axios({
+  method: 'get',
+  url: 'https://bit.ly/2mTM3nY',
+  responseType: 'stream'
+});
+response.data.pipe(fs.createWriteStream('ada_lovelace.jpg'));
+```
+</CodeGroup>
+
+### axios(url[, config])
+
+When only a URL is provided, Axios defaults to a GET request:
+
+```javascript
+// Send a GET request (default method)
+axios('/user/12345');
+```
+
+## Concurrent requests
+
+Perform multiple requests in parallel using JavaScript's built-in `Promise.all()`:
+
+```javascript
+function getUserAccount() {
+  return axios.get('/user/12345');
+}
+
+function getUserPermissions() {
+  return axios.get('/user/12345/permissions');
+}
+
+Promise.all([getUserAccount(), getUserPermissions()])
+  .then(function (results) {
+    const acct = results[0];
+    const perm = results[1];
+  });
+```
+
+<Note>
+The `axios.all()` helper is deprecated. Use `Promise.all()` instead.
+</Note>
+
+## Query parameters
+
+Pass URL parameters using the `params` option:
+
+```javascript
+axios.get('/user', {
+  params: {
+    ID: 12345,
+    name: 'John Doe'
+  }
+})
+```
+
+### Custom parameter serialization
+
+Customize how parameters are serialized:
+
+<CodeGroup>
+```javascript Custom serializer
+axios.get('/user', {
+  params: {
+    ID: 12345
+  },
+  paramsSerializer: {
+    serialize: (params) => {
+      // Custom serialization logic
+      return qs.stringify(params, { arrayFormat: 'brackets' })
+    }
+  }
+});
+```
+
+```javascript Custom encoder
+axios.get('/user', {
+  params: {
+    ID: 12345
+  },
+  paramsSerializer: {
+    encode: (param) => {
+      // Custom encoding for each parameter
+      return encodeURIComponent(param);
+    },
+    indexes: false // Use empty brackets for arrays
+  }
+});
+```
+</CodeGroup>
+
+## Request body formats
+
+### JSON (default)
+
+Axios automatically serializes JavaScript objects to JSON:
+
+```javascript
+axios.post('/user', {
+  firstName: 'Fred',
+  lastName: 'Flintstone'
+});
+```
+
+### URL-encoded data
+
+Send data in `application/x-www-form-urlencoded` format:
+
+<Tabs>
+  <Tab title="URLSearchParams">
+    ```javascript
+    const params = new URLSearchParams({ foo: 'bar' });
+    params.append('extraparam', 'value');
+    axios.post('/foo', params);
+    ```
+  </Tab>
+  
+  <Tab title="Auto-serialization">
+    ```javascript
+    const data = {
+      x: 1,
+      arr: [1, 2, 3],
+      users: [
+        { name: 'Peter', surname: 'Griffin' },
+        { name: 'Thomas', surname: 'Anderson' }
+      ]
+    };
+
+    await axios.postForm('https://postman-echo.com/post', data, {
+      headers: { 'content-type': 'application/x-www-form-urlencoded' }
+    });
+    ```
+  </Tab>
+  
+  <Tab title="Using qs library">
+    ```javascript
+    import qs from 'qs';
+
+    const data = { bar: 123 };
+    const options = {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      data: qs.stringify(data),
+      url
+    };
+    axios(options);
+    ```
+  </Tab>
+</Tabs>
+
+### Multipart form data
+
+Send files and form data using `multipart/form-data`:
+
+<Tabs>
+  <Tab title="FormData">
+    ```javascript
+    const formData = new FormData();
+    formData.append('foo', 'bar');
+
+    axios.post('https://httpbin.org/post', formData);
+    ```
+  </Tab>
+  
+  <Tab title="Auto-serialization">
+    ```javascript
+    axios.post(
+      'https://httpbin.org/post',
+      { x: 1 },
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      }
+    ).then(({ data }) => console.log(data));
+    ```
+  </Tab>
+  
+  <Tab title="File upload">
+    ```javascript
+    await axios.postForm('https://httpbin.org/post', {
+      myVar: 'foo',
+      file: document.querySelector('#fileInput').files[0]
+    });
+    ```
+  </Tab>
+  
+  <Tab title="Multiple files">
+    ```javascript
+    await axios.postForm('https://httpbin.org/post', {
+      'files[]': document.querySelector('#fileInput').files
+    });
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+Axios automatically sets the appropriate `Content-Type` header when you pass a FormData instance.
+</Note>
+
+## HTML forms
+
+Pass an HTML Form element directly as a payload:
+
+<CodeGroup>
+```javascript As multipart
+await axios.postForm(
+  'https://httpbin.org/post',
+  document.querySelector('#htmlForm')
+);
+```
+
+```javascript As JSON
+await axios.post(
+  'https://httpbin.org/post',
+  document.querySelector('#htmlForm'),
+  {
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }
+);
+```
+</CodeGroup>
+
+## getUri helper
+
+Generate the final URL without making a request:
+
+```javascript
+const instance = axios.create({
+  baseURL: 'https://api.example.com'
+});
+
+const uri = instance.getUri({
+  url: '/user',
+  params: { ID: 12345 }
+});
+// Returns: https://api.example.com/user?ID=12345
+```

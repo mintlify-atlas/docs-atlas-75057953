@@ -1,0 +1,382 @@
+---
+title: Migration guide
+description: Migrate from Axios 0.x to 1.x with comprehensive examples and strategies
+---
+
+## Overview
+
+Axios 1.x introduced several breaking changes to improve consistency, security, and developer experience. This guide helps you upgrade from Axios 0.x to 1.x by documenting breaking changes and providing migration strategies.
+
+<Note>
+  **Migration timeline**: Simple applications take 1-2 hours, medium applications 1-2 days, and large applications with complex error handling 3-5 days.
+</Note>
+
+## Key changes summary
+
+| Area | 0.x Behavior | 1.x Behavior | Impact |
+|------|--------------|--------------|--------|
+| Error handling | Selective throwing | Consistent throwing | High |
+| JSON parsing | Lenient | Strict | Medium |
+| Browser support | IE11+ | Modern browsers | Low-Medium |
+| TypeScript | Partial | Full support | Low |
+
+## Breaking changes
+
+### Error handling changes
+
+**The most significant change in Axios 1.x is how errors are handled.**
+
+<Tabs>
+  <Tab title="Axios 0.x">
+    ```javascript
+    // Axios 0.x - Some HTTP error codes didn't throw
+    axios.get('/api/data')
+      .then(response => {
+        console.log('Success:', response.data);
+      });
+
+    // Response interceptor could "swallow" errors
+    axios.interceptors.response.use(
+      response => response,
+      error => {
+        handleError(error);
+        // Error was "handled" and didn't propagate
+      }
+    );
+    ```
+  </Tab>
+  <Tab title="Axios 1.x">
+    ```javascript
+    // Axios 1.x - All HTTP errors throw consistently
+    axios.get('/api/data')
+      .then(response => {
+        console.log('Success:', response.data);
+      })
+      .catch(error => {
+        // Must handle errors at call site
+        console.error('Request failed:', error);
+      });
+
+    // Response interceptor must re-throw or return rejected promise
+    axios.interceptors.response.use(
+      response => response,
+      error => {
+        handleError(error);
+        return Promise.reject(error); // or throw error
+      }
+    );
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  Response interceptors can no longer "swallow" errors silently. Every API call must handle errors explicitly or they become unhandled promise rejections.
+</Warning>
+
+### JSON parsing changes
+
+<Tabs>
+  <Tab title="Axios 0.x">
+    ```javascript
+    // Lenient JSON parsing - would attempt to parse invalid JSON
+    response.data; // Might contain partial data or fallbacks
+    ```
+  </Tab>
+  <Tab title="Axios 1.x">
+    ```javascript
+    // Strict JSON parsing - throws clear errors
+    try {
+      const data = response.data;
+    } catch (error) {
+      // Handle JSON parsing errors explicitly
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Transform changes
+
+```javascript
+// Axios 1.x - Headers parameter always available
+transformRequest: [function (data, headers) {
+  // More predictable behavior
+  return data;
+}]
+```
+
+### Browser support changes
+
+- **0.x**: Supported IE11 and older browsers
+- **1.x**: Requires modern browsers with Promise support
+- **Polyfills**: May be needed for older browser support
+
+## Migration strategies
+
+### Strategy 1: Centralized error handling
+
+```javascript
+class ApiErrorHandler {
+  constructor() {
+    this.setupInterceptors();
+  }
+
+  setupInterceptors() {
+    axios.interceptors.response.use(
+      response => response,
+      error => {
+        this.processError(error);
+        
+        // Return resolved promise for handled errors
+        if (this.isHandledError(error)) {
+          return Promise.resolve({
+            data: null,
+            error: this.normalizeError(error),
+            handled: true
+          });
+        }
+        
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  processError(error) {
+    console.error('API Error:', error);
+    
+    if (error.response?.status === 401) {
+      this.handleAuthError();
+    } else if (error.response?.status >= 500) {
+      this.showErrorNotification('Server error occurred');
+    }
+  }
+
+  isHandledError(error) {
+    const handledStatuses = [401, 403, 404, 422, 500, 502, 503];
+    return handledStatuses.includes(error.response?.status);
+  }
+
+  normalizeError(error) {
+    return {
+      status: error.response?.status,
+      message: error.response?.data?.message || error.message,
+      code: error.response?.data?.code || error.code
+    };
+  }
+}
+
+const errorHandler = new ApiErrorHandler();
+```
+
+### Strategy 2: Wrapper function pattern
+
+```javascript
+function createSafeApi() {
+  const api = axios.create();
+  
+  api.interceptors.response.use(
+    response => ({ data: response.data, error: null }),
+    error => {
+      return Promise.resolve({
+        data: null,
+        error: {
+          status: error.response?.status,
+          message: error.response?.data?.message || error.message
+        }
+      });
+    }
+  );
+  
+  return api;
+}
+
+const api = createSafeApi();
+
+// Usage - always returns a resolved promise
+const { data, error } = await api.get('/api/users');
+if (error) {
+  console.error('Request failed:', error);
+} else {
+  console.log('Success:', data);
+}
+```
+
+### Strategy 3: Gradual migration with adapter
+
+```javascript
+// Create instances for gradual migration
+const legacyApi = axios.create({
+  // Keep old behavior for legacy code
+  validateStatus: () => true
+});
+
+const modernApi = axios.create({
+  // Use new 1.x behavior for new code
+});
+
+// Migrate endpoints one at a time
+const userService = {
+  getUsers: () => modernApi.get('/api/users'),
+  getLegacyData: () => legacyApi.get('/api/legacy')
+};
+```
+
+## Common patterns
+
+### Updating async/await code
+
+<Tabs>
+  <Tab title="Before (0.x)">
+    ```javascript
+    async function fetchUser(id) {
+      const response = await axios.get(`/api/users/${id}`);
+      return response.data;
+    }
+    ```
+  </Tab>
+  <Tab title="After (1.x)">
+    ```javascript
+    async function fetchUser(id) {
+      try {
+        const response = await axios.get(`/api/users/${id}`);
+        return response.data;
+      } catch (error) {
+        console.error('Failed to fetch user:', error);
+        throw error; // or return default value
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Updating promise chains
+
+<Tabs>
+  <Tab title="Before (0.x)">
+    ```javascript
+    axios.get('/api/data')
+      .then(response => {
+        processData(response.data);
+      });
+    ```
+  </Tab>
+  <Tab title="After (1.x)">
+    ```javascript
+    axios.get('/api/data')
+      .then(response => {
+        processData(response.data);
+      })
+      .catch(error => {
+        console.error('Request failed:', error);
+      });
+    ```
+  </Tab>
+</Tabs>
+
+### Updating global interceptors
+
+```javascript
+// Add proper error handling in interceptors
+axios.interceptors.response.use(
+  response => response,
+  async error => {
+    // Handle token refresh
+    if (error.response?.status === 401) {
+      try {
+        await refreshToken();
+        return axios.request(error.config);
+      } catch (refreshError) {
+        return Promise.reject(refreshError);
+      }
+    }
+    
+    // Always return rejected promise for unhandled errors
+    return Promise.reject(error);
+  }
+);
+```
+
+## Testing your migration
+
+<Steps>
+  <Step title="Update Axios">
+    ```bash
+    npm install axios@latest
+    ```
+  </Step>
+  
+  <Step title="Add error handling">
+    Update all axios calls to include `.catch()` or try/catch blocks
+  </Step>
+  
+  <Step title="Test error scenarios">
+    - Test 4xx responses (client errors)
+    - Test 5xx responses (server errors)
+    - Test network failures
+    - Test timeout scenarios
+  </Step>
+  
+  <Step title="Update interceptors">
+    Ensure all interceptors properly propagate errors
+  </Step>
+  
+  <Step title="Run integration tests">
+    Verify all API calls work as expected
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<Accordion title="Unhandled promise rejections after upgrade">
+  This is the most common issue. Add `.catch()` handlers or try/catch blocks to all axios calls.
+  
+  ```javascript
+  // Before
+  axios.get('/api/data').then(r => console.log(r.data));
+  
+  // After
+  axios.get('/api/data')
+    .then(r => console.log(r.data))
+    .catch(e => console.error(e));
+  ```
+</Accordion>
+
+<Accordion title="Interceptors not working as expected">
+  Ensure interceptors return `Promise.reject(error)` to propagate errors:
+  
+  ```javascript
+  axios.interceptors.response.use(
+    response => response,
+    error => {
+      handleError(error);
+      return Promise.reject(error); // Must return rejected promise
+    }
+  );
+  ```
+</Accordion>
+
+<Accordion title="JSON parsing errors">
+  Axios 1.x is stricter about JSON parsing. Use `transformResponse` for custom parsing:
+  
+  ```javascript
+  axios.get('/api/data', {
+    transformResponse: [function (data) {
+      try {
+        return JSON.parse(data);
+      } catch (e) {
+        return data; // Return raw data on parse error
+      }
+    }]
+  });
+  ```
+</Accordion>
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Axios 1.x Changelog" icon="list" href="https://github.com/axios/axios/blob/main/CHANGELOG.md">
+    Complete list of changes in version 1.x
+  </Card>
+  <Card title="Error handling guide" icon="triangle-exclamation" href="/core/error-handling">
+    Comprehensive error handling documentation
+  </Card>
+</CardGroup>
